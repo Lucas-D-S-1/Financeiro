@@ -1,0 +1,1936 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agente Financeiro — Lucas</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0D0F12;--bg2:#13161A;--bg3:#1A1E24;--bg4:#20252D;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --text:#E8EAF0;--muted:#6B7280;--muted2:#4B5563;
+  --accent:#C8F04A;--accent2:#4AF0C8;
+  --red:#F04A6B;--amber:#F0A84A;--green:#4AF0A8;--blue:#4A8AF0;--purple:#A855F7;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --r:10px;--r2:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
+button{cursor:pointer;}
+
+/* ── LOGIN ── */
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:32px;}
+.login-logo{font-family:var(--mono);font-size:11px;letter-spacing:0.2em;color:var(--muted);text-transform:uppercase;}
+.login-title{font-size:28px;font-weight:300;letter-spacing:-0.02em;text-align:center;}
+.login-title span{color:var(--accent);font-weight:500;}
+.google-btn{display:flex;align-items:center;gap:12px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:14px 28px;border-radius:var(--r2);font-family:var(--sans);font-size:15px;transition:all 0.2s;}
+.google-btn:hover{background:var(--bg2);border-color:var(--accent);color:var(--accent);}
+.google-btn svg{width:20px;height:20px;}
+
+/* ── APP SHELL ── */
+#app{display:none;}
+header{display:flex;align-items:center;justify-content:space-between;padding:18px 32px;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(13,15,18,0.96);backdrop-filter:blur(16px);z-index:100;}
+.logo{font-family:var(--mono);font-size:13px;letter-spacing:0.1em;color:var(--muted);}
+.logo span{color:var(--accent);}
+.header-controls{display:flex;align-items:center;gap:16px;}
+.month-nav{display:flex;align-items:center;gap:6px;}
+.month-nav button{background:var(--bg3);border:1px solid var(--border);color:var(--muted);width:28px;height:28px;border-radius:7px;font-size:13px;transition:all 0.15s;}
+.month-nav button:hover{border-color:var(--accent);color:var(--accent);}
+#month-label{font-family:var(--mono);font-size:13px;min-width:72px;text-align:center;color:var(--text);}
+
+/* Toggle líquido/bruto */
+.toggle-wrap{display:flex;align-items:center;gap:8px;font-size:12px;font-family:var(--mono);color:var(--muted);}
+.toggle{position:relative;width:36px;height:20px;}
+.toggle input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;inset:0;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;transition:0.2s;}
+.toggle-slider:before{content:'';position:absolute;width:14px;height:14px;left:2px;top:2px;background:var(--muted);border-radius:50%;transition:0.2s;}
+.toggle input:checked + .toggle-slider{background:rgba(200,240,74,0.15);border-color:var(--accent);}
+.toggle input:checked + .toggle-slider:before{transform:translateX(16px);background:var(--accent);}
+#toggle-label{min-width:44px;}
+
+/* Filtro por cartão */
+.cartao-filter select{background:var(--bg3);border:1px solid var(--border);color:var(--muted);padding:4px 8px;border-radius:7px;font-family:var(--mono);font-size:12px;outline:none;}
+.cartao-filter select:focus{border-color:var(--border2);}
+
+/* ── SELETOR DE PERFIL ──
+   O painel nasceu como visão individual do Lucas e agora troca de titular por
+   aqui. A cor do avatar acompanha a pessoa: é o sinal que continua na
+   periferia da tela depois que o menu fecha, e é o que impede ler os números
+   de uma pessoa achando que são da outra. */
+body{--perfil-cor:var(--accent);}
+body[data-perfil="Julia"]{--perfil-cor:var(--accent2);}
+.perfil-chip{position:relative;}
+.perfil-btn{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:3px 10px 3px 3px;border-radius:999px;font-family:var(--sans);font-size:13px;transition:border-color 0.15s;}
+.perfil-btn:hover{border-color:var(--border2);}
+.perfil-chip.aberto .perfil-btn{border-color:var(--perfil-cor);}
+.avatar{width:28px;height:28px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--accent);flex-shrink:0;}
+.perfil-btn .avatar{background:var(--bg4);border-color:var(--perfil-cor);color:var(--perfil-cor);}
+.perfil-caret{font-size:9px;color:var(--muted);}
+.perfil-menu{display:none;position:absolute;right:0;top:calc(100% + 8px);min-width:230px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:6px;box-shadow:0 14px 36px rgba(0,0,0,0.55);}
+.perfil-chip.aberto .perfil-menu{display:block;}
+.perfil-menu-hdr{font-family:var(--mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted2);padding:6px 10px 8px;}
+.perfil-opt{display:flex;align-items:center;gap:10px;width:100%;background:none;border:none;color:var(--text);font-family:var(--sans);font-size:13px;text-align:left;padding:7px 10px;border-radius:7px;transition:background 0.15s;}
+.perfil-opt:hover{background:var(--bg3);}
+.perfil-opt .avatar{width:22px;height:22px;font-size:10px;}
+.perfil-opt[data-perfil="Lucas"] .avatar{color:var(--accent);border-color:rgba(200,240,74,0.4);}
+.perfil-opt[data-perfil="Julia"] .avatar{color:var(--accent2);border-color:rgba(74,240,200,0.4);}
+.perfil-check{margin-left:auto;font-size:11px;color:var(--perfil-cor);visibility:hidden;}
+.perfil-opt.ativo .perfil-check{visibility:visible;}
+.perfil-menu-sep{height:1px;background:var(--border);margin:6px 4px;}
+.perfil-conta{font-family:var(--mono);font-size:10px;color:var(--muted2);padding:2px 10px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.perfil-sair{color:var(--muted);font-family:var(--mono);font-size:12px;}
+.perfil-sair:hover{color:var(--red);}
+/* Faixa e controles que só fazem sentido no lado do Lucas. */
+.perfil-aviso{display:none;align-items:flex-start;gap:9px;background:rgba(74,240,200,0.07);border:1px solid rgba(74,240,200,0.22);color:var(--accent2);border-radius:var(--r);padding:10px 15px;margin:24px 32px -8px;font-size:12.5px;line-height:1.45;max-width:1260px;}
+body[data-perfil="Julia"] .perfil-aviso{display:flex;}
+body[data-perfil="Julia"] .so-lucas{display:none;}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:2px;padding:0 32px;border-bottom:1px solid var(--border);background:var(--bg);}
+.tab{padding:13px 18px;font-size:13px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s;font-family:var(--mono);letter-spacing:0.04em;background:none;border-top:none;border-left:none;border-right:none;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* ── MAIN ── */
+main{padding:28px 32px;max-width:1260px;margin:0 auto;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+/* ── UTILS ── */
+.loading{display:flex;align-items:center;justify-content:center;height:280px;color:var(--muted);font-family:var(--mono);font-size:13px;gap:12px;}
+.spinner{width:16px;height:16px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.section{margin-bottom:28px;}
+.section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.section-title{font-family:var(--mono);font-size:11px;letter-spacing:0.15em;color:var(--muted);text-transform:uppercase;}
+
+/* ── KPI GRID ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:28px;}
+.kpi-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:18px;transition:border-color 0.2s;}
+.kpi-card:hover{border-color:var(--border2);}
+.kpi-label{font-size:10px;font-family:var(--mono);letter-spacing:0.12em;color:var(--muted);text-transform:uppercase;margin-bottom:10px;}
+.kpi-value{font-size:22px;font-weight:300;letter-spacing:-0.02em;}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:5px;}
+.kpi-value.green{color:var(--green);}
+.kpi-value.red{color:var(--red);}
+.kpi-value.amber{color:var(--amber);}
+.kpi-value.blue{color:var(--blue);}
+.kpi-badge{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;margin-top:6px;}
+.kpi-badge.warn{background:rgba(240,168,74,0.12);color:var(--amber);}
+
+/* ── DECOMP ── */
+.decomp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px;}
+.decomp-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px;}
+.decomp-label{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:7px;}
+.decomp-value{font-size:17px;font-weight:300;}
+.decomp-sub{font-size:11px;color:var(--muted);margin-top:3px;}
+
+/* ── CATEGORIA TABLE ── */
+.cat-table{width:100%;border-collapse:collapse;}
+.cat-table td{padding:11px 0;border-bottom:1px solid var(--border);}
+.cat-table tr:last-child td{border-bottom:none;}
+.cat-name{font-size:14px;width:180px;}
+.cat-bar-bg{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.cat-bar-fill{height:5px;border-radius:3px;transition:width 0.6s ease;}
+.cat-vals{font-family:var(--mono);font-size:12px;color:var(--muted);text-align:right;white-space:nowrap;padding-left:14px;}
+.cat-status{text-align:center;width:32px;padding-left:10px;font-size:13px;}
+
+/* ── REEMBOLSO ALERT ── */
+.reemb-alert{background:rgba(240,168,74,0.08);border:1px solid rgba(240,168,74,0.25);border-radius:var(--r);padding:12px 16px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;}
+.reemb-alert-icon{font-size:16px;flex-shrink:0;margin-top:1px;}
+.reemb-alert-text{font-size:13px;color:var(--amber);}
+.reemb-alert-text strong{font-weight:500;}
+
+/* ── HISTÓRICO ── */
+.chart-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:24px 24px 16px;}
+.chart-bars{display:flex;align-items:flex-end;gap:6px;height:160px;margin-bottom:8px;}
+.chart-bar-group{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;}
+.chart-bar{width:100%;border-radius:4px 4px 0 0;cursor:pointer;min-height:2px;transition:opacity 0.2s;}
+.chart-bar:hover{opacity:0.75;}
+.chart-label{font-family:var(--mono);font-size:10px;color:var(--muted);}
+
+/* ── TRANSAÇÕES TABLE ── */
+.export-btn{margin-left:auto;border-color:rgba(200,240,74,0.35);color:var(--accent);}
+.export-btn:hover{background:rgba(200,240,74,0.1);}
+.export-btn.vazio{opacity:0.45;border-color:var(--border);color:var(--muted);}
+/* Ainda só no navegador: a cor avisa antes de a pessoa fechar a aba. */
+.export-btn.nao-sincronizado{opacity:1;border-color:var(--red);color:var(--red);}
+.parc-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.search-box{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-family:var(--mono);font-size:12px;outline:none;width:260px;}
+.search-box::placeholder{color:var(--muted2);}
+.search-box:focus{border-color:var(--border2);}
+.filter-btn{background:var(--bg3);border:1px solid var(--border);color:var(--muted);padding:7px 12px;border-radius:8px;font-family:var(--mono);font-size:12px;transition:all 0.15s;}
+.filter-btn.active{background:rgba(200,240,74,0.1);border-color:var(--accent);color:var(--accent);}
+.parc-table{width:100%;border-collapse:collapse;font-size:13px;}
+.parc-table th{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase;padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);}
+.parc-table td{padding:11px 10px;border-bottom:1px solid var(--border);}
+.parc-table tr:last-child td{border-bottom:none;}
+.parc-table tr:hover td{background:var(--bg3);}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-family:var(--mono);font-size:10px;letter-spacing:0.04em;}
+.badge-parc{background:rgba(74,138,240,0.1);color:var(--blue);}
+.badge-assin{background:rgba(200,240,74,0.1);color:var(--accent);}
+.saldo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:26px;}
+.saldo-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:16px;}
+.saldo-card.disponivel{border-color:rgba(74,240,168,0.22);}
+.saldo-conta{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px;}
+.saldo-valor{font-size:21px;font-weight:300;}
+.saldo-valor.indisponivel{color:var(--muted2);}
+.saldo-fluxo{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px;line-height:1.5;}
+.trans-table td{vertical-align:middle;}
+.trans-desc{min-width:220px;max-width:360px;}
+.trans-desc strong{display:block;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.trans-desc small{display:block;color:var(--muted2);font-family:var(--mono);font-size:9px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.inline-select{background:var(--bg3);border:1px solid var(--border);color:var(--muted);padding:5px 7px;border-radius:7px;font-family:var(--mono);font-size:10px;max-width:170px;outline:none;}
+.inline-select:focus{border-color:var(--accent);color:var(--text);}
+.fixed-toggle{background:var(--bg3);border:1px solid var(--border);color:var(--muted2);padding:4px 8px;border-radius:999px;font-family:var(--mono);font-size:9px;white-space:nowrap;}
+.fixed-toggle.on{background:rgba(74,138,240,.1);border-color:rgba(74,138,240,.35);color:var(--blue);}
+.fixed-toggle:disabled{opacity:.35;cursor:default;}
+.edit-mini{background:none;border:1px solid var(--border);color:var(--muted);padding:4px 8px;border-radius:6px;font-family:var(--mono);font-size:9px;}
+.edit-mini:hover{border-color:var(--accent);color:var(--accent);}
+.valor-credito{color:var(--green);font-family:var(--mono);text-align:right;white-space:nowrap;}
+.valor-debito{color:var(--text);font-family:var(--mono);text-align:right;white-space:nowrap;}
+
+/* ── PROJEÇÃO ── */
+.proj-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.proj-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:20px;position:relative;}
+.proj-month{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px;}
+.proj-totals{margin-bottom:14px;}
+.proj-total-bruto{font-size:13px;color:var(--muted);font-family:var(--mono);text-decoration:line-through;margin-bottom:2px;}
+.proj-total-liq{font-size:22px;font-weight:300;color:var(--amber);}
+.proj-total-liq.ok{color:var(--green);}
+
+/* Barras empilhadas */
+.stack-bars{height:8px;border-radius:4px;display:flex;overflow:hidden;margin-bottom:14px;gap:1px;}
+.stack-seg{height:100%;transition:width 0.5s ease;}
+.stack-legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.stack-leg-item{display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);color:var(--muted);}
+.stack-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+
+/* Parcelas que terminam */
+.proj-termina{margin-top:14px;border-top:1px solid var(--border);padding-top:12px;}
+.proj-termina-title{font-size:10px;font-family:var(--mono);color:var(--green);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;}
+.proj-item{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border);}
+.proj-item:last-child{border-bottom:none;}
+.proj-item-label{color:var(--muted);}
+.proj-item-val{font-family:var(--mono);}
+.proj-liberado{display:flex;justify-content:space-between;font-size:12px;padding:6px 0 0;margin-top:4px;}
+.proj-liberado span:first-child{color:var(--green);}
+.proj-liberado span:last-child{font-family:var(--mono);color:var(--green);}
+
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r2);padding:28px;width:520px;max-width:90vw;}
+.modal-title{font-family:var(--mono);font-size:13px;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:20px;}
+.modal-row{display:flex;gap:12px;margin-bottom:12px;}
+.modal-input{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-family:var(--mono);font-size:13px;outline:none;flex:1;}
+.modal-input:focus{border-color:var(--accent);}
+.modal-select{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-family:var(--mono);font-size:13px;outline:none;}
+.modal-select:focus{border-color:var(--accent);}
+.modal-check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-bottom:16px;}
+.modal-check input{accent-color:var(--accent);width:16px;height:16px;}
+.modal-btns{display:flex;gap:10px;justify-content:flex-end;}
+.btn-primary{background:rgba(200,240,74,0.1);border:1px solid var(--accent);color:var(--accent);padding:9px 20px;border-radius:8px;font-family:var(--mono);font-size:13px;transition:all 0.15s;}
+.btn-primary:hover{background:rgba(200,240,74,0.2);}
+.btn-ghost{background:none;border:1px solid var(--border);color:var(--muted);padding:9px 20px;border-radius:8px;font-family:var(--mono);font-size:13px;transition:all 0.15s;}
+.btn-ghost:hover{border-color:var(--border2);color:var(--text);}
+.modal-label{font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.08em;}
+
+/* ── CASAL ── */
+.casal-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+.casal-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:24px;}
+.casal-name{font-family:var(--mono);font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:16px;}
+.casal-name.lucas{color:var(--accent);}
+.casal-name.julia{color:var(--accent2);}
+.coming-soon{display:flex;align-items:center;justify-content:center;height:180px;color:var(--muted);font-family:var(--mono);font-size:12px;border:1px dashed var(--border2);border-radius:8px;flex-direction:column;gap:8px;}
+.casal-aviso{font-family:var(--mono);font-size:10px;color:var(--amber);border:1px solid var(--amber);border-radius:6px;padding:5px 8px;letter-spacing:0.04em;}
+.casal-total{margin-top:24px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:20px 24px;}
+.casal-total-linha{display:flex;align-items:baseline;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;}
+.casal-total-linha strong{font-size:24px;color:var(--text);letter-spacing:0;}
+.casal-total-sub{margin-top:6px;font-family:var(--mono);font-size:11px;color:var(--muted);}
+.casal-acerto{margin-top:24px;background:linear-gradient(135deg,rgba(74,240,200,0.08),rgba(200,240,74,0.04));border:1px solid rgba(74,240,200,0.24);border-radius:var(--r2);padding:20px 24px;}
+.casal-acerto-grid{display:grid;grid-template-columns:1fr 1fr 1.25fr;gap:18px;margin-top:14px;}
+.casal-acerto-item{padding-right:18px;border-right:1px solid var(--border);}
+.casal-acerto-item:last-child{padding-right:0;border-right:none;}
+.casal-acerto-label{font-family:var(--mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+.casal-acerto-valor{font-size:21px;font-weight:300;}
+.casal-acerto-direcao{font-size:11px;color:var(--muted);margin-top:4px;}
+.proj-rateio{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:10px 0 4px;padding-top:10px;border-top:1px dashed var(--border2);font-family:var(--mono);font-size:10px;color:var(--muted);}
+.proj-rateio strong{font-size:14px;color:var(--accent2);}
+
+/* ── FECHAMENTO DA TABELA DE CATEGORIAS ── */
+tr.cat-fechamento td{padding-top:9px;color:var(--muted);font-size:12px;border-top:1px dashed var(--border2);}
+tr.cat-fechamento:not(.total) td{border-top:none;padding-top:4px;}
+tr.cat-fechamento:first-of-type td{border-top:1px dashed var(--border2);padding-top:12px;}
+tr.cat-fechamento .cat-vals{font-family:var(--mono);color:var(--muted);}
+tr.cat-fechamento.total td{border-top:1px solid var(--border);padding-top:9px;color:var(--text);font-size:13px;}
+tr.cat-fechamento.total .cat-vals{color:var(--text);font-size:14px;}
+.cat-fech-nota{display:block;font-size:10px;font-family:var(--mono);color:var(--muted);opacity:0.7;margin-top:2px;}
+.cat-tag-fixo{display:inline-block;margin-left:8px;padding:1px 6px;border-radius:4px;background:rgba(122,162,247,0.12);border:1px solid rgba(122,162,247,0.3);color:var(--blue);font-family:var(--mono);font-size:9px;vertical-align:middle;}
+tr.cat-row.credito .cat-name,tr.cat-row.credito .cat-vals{color:var(--green);}
+tr.cat-row.credito .cat-fech-nota{color:var(--muted);}
+
+/* ── DRILL-DOWN POR CATEGORIA ── */
+.detalhar-btn{background:var(--bg3);border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:6px 12px;font-family:var(--mono);font-size:11px;transition:all 0.15s;white-space:nowrap;}
+.detalhar-btn:hover{border-color:var(--accent);color:var(--accent);}
+tr.cat-row{cursor:pointer;transition:background 0.12s;}
+tr.cat-row:hover{background:var(--bg2);}
+tr.cat-row.aberta{background:var(--bg2);}
+.cat-chevron{display:inline-block;width:14px;color:var(--muted);font-size:10px;}
+tr.cat-row.aberta .cat-chevron{color:var(--accent);}
+.cat-det-box{background:var(--bg2);border-left:2px solid var(--accent);border-radius:0 8px 8px 0;padding:10px 14px;margin:0 0 8px 14px;}
+.cat-det-linha{display:grid;grid-template-columns:44px 1fr auto auto;gap:10px;align-items:baseline;padding:4px 0;font-size:12px;border-bottom:1px solid var(--border2);}
+.cat-det-linha:last-of-type{border-bottom:none;}
+.cat-det-data{font-family:var(--mono);font-size:10px;color:var(--muted);}
+.cat-det-desc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);}
+.cat-det-tipo{font-family:var(--mono);font-size:10px;color:var(--muted);text-align:right;}
+.cat-det-val{font-family:var(--mono);text-align:right;min-width:76px;}
+.cat-det-rodape{display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border2);font-family:var(--mono);font-size:11px;color:var(--muted);}
+@media(max-width:640px){
+  .cat-det-linha{grid-template-columns:40px 1fr auto;}
+  .cat-det-tipo{display:none;}
+}
+
+/* ── RACHAR JULIA BTN ── */
+.rachar-btn{background:rgba(74,240,200,0.08);border:1px solid rgba(74,240,200,0.25);color:var(--accent2);padding:5px 12px;border-radius:7px;font-family:var(--mono);font-size:11px;transition:all 0.15s;}
+.rachar-btn:hover{background:rgba(74,240,200,0.15);}
+
+/* ── AÇÕES HEADER ── */
+.header-actions{display:flex;gap:8px;}
+.action-btn{background:var(--bg3);border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:8px;font-family:var(--mono);font-size:12px;transition:all 0.15s;}
+.action-btn:hover{border-color:var(--border2);color:var(--text);}
+
+@media(max-width:900px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+  .decomp-grid{grid-template-columns:repeat(2,1fr);}
+  .proj-grid{grid-template-columns:1fr;}
+  .casal-grid{grid-template-columns:1fr;}
+  .casal-acerto-grid{grid-template-columns:1fr;}
+  .casal-acerto-item{padding:0 0 12px;border-right:none;border-bottom:1px solid var(--border);}
+  .casal-acerto-item:last-child{padding-bottom:0;border-bottom:none;}
+  main{padding:16px;}
+  header{padding:14px 16px;flex-wrap:wrap;gap:12px;}
+  .tabs{padding:0 16px;}
+  .trans-table{display:block;overflow-x:auto;white-space:nowrap;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-logo">agente financeiro</div>
+  <div class="login-title">Finanças do <span>Lucas</span></div>
+  <button class="google-btn" onclick="iniciarLogin()">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+    Entrar com Google
+  </button>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="logo">agente <span>financeiro</span></div>
+    <div class="header-controls">
+      <div class="month-nav">
+        <button onclick="navMes(-1)">&#8592;</button>
+        <span id="month-label">04/2026</span>
+        <button onclick="navMes(1)">&#8594;</button>
+      </div>
+      <div class="cartao-filter">
+        <select id="cartao-sel" onchange="renderAll()">
+          <option value="">todas as contas/cartões</option>
+          <option value="Santander">Santander</option>
+          <option value="Itaú">Itaú</option>
+          <option value="WillBank">WillBank</option>
+          <option value="Nubank">Nubank</option>
+          <option value="Safra">Safra</option>
+        </select>
+      </div>
+      <div class="toggle-wrap">
+        <label class="toggle"><input type="checkbox" id="toggle-liq" checked onchange="renderAll()"><span class="toggle-slider"></span></label>
+        <span id="toggle-label">líquido</span>
+      </div>
+      <div class="perfil-chip" id="perfil-chip">
+        <button class="perfil-btn" onclick="alternarMenuPerfil(event)" aria-haspopup="menu">
+          <span class="avatar" id="perfil-avatar">L</span>
+          <span id="perfil-nome">Lucas</span>
+          <span class="perfil-caret">▾</span>
+        </button>
+        <div class="perfil-menu" role="menu">
+          <div class="perfil-menu-hdr">ver o painel de</div>
+          <button class="perfil-opt" data-perfil="Lucas" onclick="trocarPerfil('Lucas')">
+            <span class="avatar">L</span>Lucas<span class="perfil-check">✓</span></button>
+          <button class="perfil-opt" data-perfil="Julia" onclick="trocarPerfil('Julia')">
+            <span class="avatar">J</span>Julia<span class="perfil-check">✓</span></button>
+          <div class="perfil-menu-sep"></div>
+          <div class="perfil-conta" id="perfil-conta">conectado</div>
+          <button class="perfil-opt perfil-sair" onclick="logout()">sair</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" onclick="setTab('mes',this)">mês atual</div>
+    <div class="tab" onclick="setTab('transacoes',this)">transações</div>
+    <div class="tab" onclick="setTab('historico',this)">histórico</div>
+  </div>
+
+  <div class="perfil-aviso" id="perfil-aviso"></div>
+
+  <main>
+
+    <!-- MÊS ATUAL -->
+    <div id="tab-mes" class="tab-content active">
+      <div id="mes-loading" class="loading"><div class="spinner"></div> carregando dados...</div>
+      <div id="mes-content" style="display:none">
+        <div id="reemb-alert-area"></div>
+        <div class="kpi-grid" id="kpi-grid"></div>
+        <div class="section">
+          <div class="section-hdr"><span class="section-title">decomposição da fatura</span></div>
+          <div class="decomp-grid" id="decomp-grid"></div>
+        </div>
+        <div class="section">
+          <div class="section-hdr">
+            <span class="section-title">gastos por categoria</span>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="detalhar-btn" id="btn-detalhar" onclick="alternarTodasCategorias()">▸ detalhar tudo</button>
+              <button class="rachar-btn so-lucas" onclick="abrirModalRachar()">⚡ rachar com Julia</button>
+            </div>
+          </div>
+          <table class="cat-table" id="cat-table"></table>
+        </div>
+        <div class="section">
+          <div class="section-hdr"><span class="section-title">comparativo mês anterior</span></div>
+          <table class="parc-table"><thead><tr><th>Categoria</th><th>Mês anterior</th><th>Mês atual</th><th>Variação</th></tr></thead><tbody id="comp-cat-body"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTÓRICO -->
+    <div id="tab-historico" class="tab-content">
+      <div id="hist-loading" class="loading"><div class="spinner"></div> carregando histórico...</div>
+      <div id="hist-content" style="display:none">
+        <div class="section">
+          <div class="section-hdr"><span class="section-title">gasto mensal — últimos 12 meses</span></div>
+          <div class="chart-wrap"><div class="chart-bars" id="chart-bars"></div></div>
+        </div>
+        <div class="section">
+          <div class="section-hdr"><span class="section-title">evolução por categoria</span></div>
+          <table class="parc-table"><thead><tr><th>Categoria</th><th>Mês anterior</th><th>Mês atual</th><th>Variação</th></tr></thead><tbody id="hist-cat-body"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRANSAÇÕES -->
+    <div id="tab-transacoes" class="tab-content">
+      <div id="trans-loading" class="loading"><div class="spinner"></div> carregando transações...</div>
+      <div id="trans-content" style="display:none">
+        <div id="trans-alert-area"></div>
+        <div class="section">
+          <div class="section-hdr">
+            <span class="section-title">saldos por conta</span>
+            <span class="section-title">saldo só aparece quando a fonte informa</span>
+          </div>
+          <div class="saldo-grid" id="saldo-grid"></div>
+        </div>
+        <div class="section">
+          <div class="section-hdr">
+            <span class="section-title" id="trans-titulo">créditos e débitos do mês</span>
+            <span class="section-title" id="trans-resumo"></span>
+          </div>
+          <div class="parc-toolbar">
+            <input class="search-box" type="text" id="trans-search" placeholder="buscar descrição, categoria ou conta..." oninput="renderTransacoes()">
+            <select class="inline-select" id="trans-periodo" onchange="periodoFiltro=this.value;renderTransacoes()" title="competência é quando você gastou; fatura é o que o banco cobra junto">
+              <option value="mes">por competência</option>
+              <option value="fatura">por fatura</option>
+            </select>
+            <button class="filter-btn active" data-direcao="" onclick="filtrarDirecao('',this)">todos</button>
+            <button class="filter-btn" data-direcao="Débito" onclick="filtrarDirecao('Débito',this)">débitos</button>
+            <button class="filter-btn" data-direcao="Crédito" onclick="filtrarDirecao('Crédito',this)">créditos</button>
+            <button class="filter-btn export-btn" id="btn-exportar-edicoes" onclick="exportarEdicoes()" title="baixa as correções feitas na tela para virarem regra no pipeline">exportar edições</button>
+          </div>
+          <table class="parc-table trans-table">
+            <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Fixo?</th><th>Conta</th><th style="text-align:right">Crédito</th><th style="text-align:right">Débito</th><th></th></tr></thead>
+            <tbody id="trans-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL: + fatura inteira -->
+<div class="modal-overlay" id="modal-fatura">
+  <div class="modal">
+    <div class="modal-title">registrar fatura</div>
+    <div class="modal-label">cartão</div>
+    <div class="modal-row">
+      <select class="modal-select" id="fatura-cartao" style="flex:1">
+        <option>Santander</option><option>Itaú</option><option>WillBank</option><option>Nubank</option>
+      </select>
+    </div>
+    <div class="modal-label">mês de referência</div>
+    <div class="modal-row">
+      <input class="modal-input" id="fatura-mes" placeholder="04/2026" style="flex:1">
+    </div>
+    <div class="modal-label">valor total da fatura (R$)</div>
+    <div class="modal-row">
+      <input class="modal-input" id="fatura-valor" placeholder="0,00" type="text" style="flex:1">
+    </div>
+    <div class="modal-label">observação (opcional)</div>
+    <div class="modal-row">
+      <input class="modal-input" id="fatura-obs" placeholder="detalhes..." style="flex:1">
+    </div>
+    <div class="modal-btns">
+      <button class="btn-ghost" onclick="fecharModal('modal-fatura')">cancelar</button>
+      <button class="btn-primary" onclick="registrarFatura()">registrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: editar transação -->
+<div class="modal-overlay" id="modal-editar">
+  <div class="modal">
+    <div class="modal-title">editar transação</div>
+    <input type="hidden" id="edit-id">
+    <div class="modal-label">nome exibido</div>
+    <div class="modal-row"><input class="modal-input" id="edit-desc" placeholder="Nome da transação" style="flex:1"></div>
+    <div class="modal-label">categoria</div>
+    <div class="modal-row"><select class="modal-select" id="edit-cat" style="flex:1"></select></div>
+    <label class="modal-check"><input type="checkbox" id="edit-fixo"> gasto fixo / recorrente</label>
+    <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:16px;">A descrição original fica preservada. A correção vale em todas as abas e é salva na planilha, então aparece para as duas pessoas e em qualquer aparelho.</div>
+    <div class="modal-btns">
+      <button class="btn-ghost" onclick="fecharModal('modal-editar')">cancelar</button>
+      <button class="btn-ghost" style="color:var(--red);border-color:var(--red)" onclick="removerOverride()">resetar</button>
+      <button class="btn-primary" onclick="salvarEdicao()">salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function removerOverride(){
+  apagarOverride(document.getElementById("edit-id").value);
+  fecharModal("modal-editar");
+  renderAll();
+}
+</script>
+<div class="modal-overlay" id="modal-rachar">
+  <div class="modal">
+    <div class="modal-title">rachar com Julia</div>
+    <div class="modal-label">descrição do gasto</div>
+    <div class="modal-row"><input class="modal-input" id="rachar-desc" placeholder="Ex: URU Restaurante" style="flex:1"></div>
+    <div class="modal-label">valor total (R$)</div>
+    <div class="modal-row"><input class="modal-input" id="rachar-valor" placeholder="0,00" type="text" style="flex:1"></div>
+    <div class="modal-label">categoria</div>
+    <div class="modal-row">
+      <select class="modal-select" id="rachar-cat" style="flex:1">
+        <option>Alimentação</option><option>Lazer</option><option>Transporte - Uber</option>
+        <option>Saúde</option><option>Diversos</option><option>Viagem</option>
+      </select>
+    </div>
+    <div class="modal-label">split</div>
+    <div class="modal-row">
+      <select class="modal-select" id="rachar-split" style="flex:1">
+        <option value="50">50% / 50%</option>
+        <option value="52.9">52,9% Lucas / 47,1% Julia</option>
+      </select>
+    </div>
+    <div style="background:var(--bg3);border-radius:8px;padding:12px;font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:16px;" id="rachar-preview">
+      Preencha os campos acima para ver o preview
+    </div>
+    <div class="modal-btns">
+      <button class="btn-ghost" onclick="fecharModal('modal-rachar')">cancelar</button>
+      <button class="btn-primary" onclick="confirmarRachar()">criar lançamentos</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CLIENT_ID="957120309607-ai5mt8u2uets67obn6tpcq75carog7c7.apps.googleusercontent.com";
+const SHEET_ID="1NjVLm4ztpz-46vUcTRFpZ7Z-pzzD3NA0J_4XQLzewsg";
+// Escopo de escrita, e não `spreadsheets.readonly`: as correções feitas na
+// tela precisam voltar para a aba `Overrides` da planilha. Enquanto moravam só
+// no `localStorage`, a Julia editava no celular dela e o resultado não saía de
+// lá — o que inviabilizava o painel como ferramenta dos dois.
+const SCOPES="https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.profile";
+// Este arquivo é servido publicamente. Nada de valor real, nome de terceiro ou
+// meta pessoal mora aqui — tudo isso vem da aba Config, que está atrás do
+// login. Foi por essa razão que o piso de renda saiu daqui, e vale igual para
+// o orçamento e para a lista de reembolsos esperados.
+const ORC={};
+let reembEsperados=[];
+
+// ── PERFIS ────────────────────────────────────────────────
+// O painel troca de titular: as mesmas abas passam a ler os lançamentos da
+// pessoa escolhida. `mesesParciais` são meses reconstruídos de print da fatura
+// aberta, sem total declarado do banco para conferir.
+//
+// 05/2026 esteve nesta lista do lado da Julia enquanto a única fonte do Safra
+// era a exportação de 90 dias, que começa em 19/05. Com as faturas de 05, 06 e
+// 07 na base — cada uma conciliada com o próprio total — maio dela deixou de
+// ser parcial.
+//
+// `temConfig` diz se a pessoa tem orçamento por categoria, renda piso e
+// compromissos fixos declarados na aba Config. Só o Lucas tem. Reaproveitar os
+// dele no painel dela mostraria meta inventada em cima do gasto real.
+// `orcamento` e `compromissos` são os intervalos da aba Config de cada um. O
+// bloco dele ocupa as colunas B–E; o dela, F–I nas mesmas linhas. `padrao` é o
+// orçamento embutido usado só enquanto a Config não responde — o dela é vazio
+// de propósito, para não mostrar a meta dele em cima do gasto dela.
+const PERFIS={
+  Lucas:{inicial:"L",mesesParciais:["08/2026"],padrao:ORC,
+    orcamento:"Config!B15:C28",compromissos:"Config!B33:E45",
+    avisoParcial:"reconstruído de prints da fatura aberta. O total que o banco mostra está na própria tela; os prints ainda são parciais e a fatura não está conciliada."},
+  Julia:{inicial:"J",mesesParciais:["08/2026"],padrao:{},
+    orcamento:"Config!F15:G28",compromissos:"Config!F33:I45",
+    avisoParcial:"a fatura do Safra ainda não fechou. As compras do mês vêm da exportação de 90 dias, e as parcelas foram projetadas da fatura anterior — uma parcela que não terminou na última está na próxima. O valor pode mudar quando a fatura sair."},
+};
+let perfil=localStorage.getItem("perfil");
+if(!PERFIS[perfil])perfil="Lucas";
+const dadosPorPerfil={Lucas:[],Julia:[]};
+const movimentosPorPerfil={Lucas:[],Julia:[]};
+const saldosPorPerfil={Lucas:[],Julia:[]};
+const ledgerIncompletoPorPerfil={Lucas:false,Julia:false};
+// A dívida entre os dois vive numa categoria só, nos dois sentidos: o que a
+// pessoa deve entra como despesa, o que tem a receber entra como crédito, e o
+// que sobra na linha é o líquido — o valor que de fato muda de mão.
+const CAT_ACERTO="Acerto do casal";
+const outroPerfil=()=>perfil==="Lucas"?"Julia":"Lucas";
+// Piso conservador de renda. Vem da aba Config para não ficar exposto neste
+// arquivo, que é servido publicamente. 0 = ainda não carregado.
+let RENDA_PISO=0;
+// A planilha antiga projetava 6 meses; a projeção fazia 3.
+const MESES_PROJETADOS=6;
+// Compromissos fixos declarados na Config (B33:E45). Antes a projeção tentava
+// inferi-los de `parcTotal===999`, um marcador da planilha manual antiga que a
+// base nova nunca produz — resultado: projetava R$ 0 de fixos. E os que não
+// passam no cartão (condução, limpeza em dinheiro) nunca apareceriam mesmo.
+let compromissos=[];
+// Categorias expandidas na aba "mês atual" e as visíveis no mês corrente.
+const catsAbertas=new Set();
+let catsVisiveis=[];
+// Rateio das despesas marcadas "casal", vindo de Config!C9.
+let SPLIT_LUCAS=0;
+let tokenClient,accessToken,allData=[],orcamentos={};
+let movimentos=[];
+// A Config lida da planilha, por pessoa. Guardada à parte para trocar de perfil
+// não precisar de nova ida à rede.
+const configPorPerfil={Lucas:{compromissos:[],orcamentos:{},piso:0},
+                       Julia:{compromissos:[],orcamentos:{},piso:0}};
+let mesAtual={m:4,y:2026};
+let direcaoFiltro="";
+// A fatura é um recorte diferente da competência: ela junta as parcelas do mês
+// com as compras à vista feitas depois do fechamento anterior, que ficam na
+// competência em que foram compradas. Para bater o total contra o app do banco
+// é preciso olhar pela fatura, não pelo mês.
+let periodoFiltro="mes";
+
+const fmt=v=>"R$ "+Math.abs(v).toLocaleString("pt-BR",{minimumFractionDigits:0,maximumFractionDigits:0});
+const fmtCentavos=v=>"R$ "+Math.abs(v).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const mesStr=(m,y)=>String(m).padStart(2,"0")+"/"+y;
+const labelMes=(m,y)=>["","jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"][m]+"/"+String(y).slice(2);
+const isLiq=()=>document.getElementById("toggle-liq").checked;
+const cartaoFil=()=>document.getElementById("cartao-sel").value;
+
+// ── LOGIN ─────────────────────────────────────────────────
+function iniciarLogin(){
+  const s=document.createElement("script");
+  s.src="https://accounts.google.com/gsi/client";
+  s.onload=()=>{
+    tokenClient=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,callback:async r=>{
+      if(r.error)return;
+      accessToken=r.access_token;
+      const u=await fetch("https://www.googleapis.com/oauth2/v3/userinfo",{headers:{Authorization:"Bearer "+accessToken}}).then(r=>r.json());
+      // Quem entrou não é o mesmo que o painel está mostrando: a conta do
+      // Google fica no menu, e o chip mostra o perfil selecionado.
+      document.getElementById("perfil-conta").textContent="conectado como "+(u.email||u.given_name||u.name||"—");
+      document.getElementById("login-screen").style.display="none";
+      document.getElementById("app").style.display="block";
+      document.getElementById("toggle-label").textContent="líquido";
+      await carregarTudo();
+    }});
+    tokenClient.requestAccessToken();
+  };
+  document.head.appendChild(s);
+}
+function logout(){
+  google.accounts.oauth2.revoke(accessToken);
+  accessToken=null;allData=[];movimentos=[];
+  // A fila de pendências fica: se alguém sair antes de a rede voltar, a
+  // correção ainda sobe no próximo login em vez de se perder.
+  overridesRemotos={};linhasRemotas=0;abaOverridesOk=false;
+  dadosPorPerfil.Lucas=[];dadosPorPerfil.Julia=[];
+  movimentosPorPerfil.Lucas=[];movimentosPorPerfil.Julia=[];
+  document.getElementById("app").style.display="none";
+  document.getElementById("login-screen").style.display="flex";
+}
+
+// ── DADOS ─────────────────────────────────────────────────
+// `chamadaSheets` **levanta** quando a API recusa; `fetchSheet` continua
+// engolindo, porque quase toda leitura tem `.catch(()=>[])` e uma aba ausente
+// não pode derrubar o painel. A escrita é o contrário: falhar em silêncio ali
+// faria o usuário achar que corrigiu algo que nunca saiu do navegador.
+async function chamadaSheets(caminho,opcoes){
+  const r=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}${caminho}`,
+    {...opcoes,headers:{Authorization:"Bearer "+accessToken,
+      "Content-Type":"application/json",...((opcoes||{}).headers)}});
+  const corpo=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error((corpo.error&&corpo.error.message)||("HTTP "+r.status));
+  return corpo;
+}
+const sheetsGet=async range=>
+  (await chamadaSheets("/values/"+encodeURIComponent(range))).values||[];
+// RAW, nunca USER_ENTERED: a planilha guarda tudo como texto de propósito, e
+// `USER_ENTERED` transformaria "05/2026" em data e "1.234,56" em 123456.
+const sheetsPut=(range,values)=>chamadaSheets(
+  "/values/"+encodeURIComponent(range)+"?valueInputOption=RAW",
+  {method:"PUT",body:JSON.stringify({range,values})});
+
+async function fetchSheet(range){
+  if(window.__HARNESS_DATA__)return window.__HARNESS_DATA__[range]||[];
+  const r=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}`,{headers:{Authorization:"Bearer "+accessToken}});
+  return(await r.json()).values||[];
+}
+function hashCurto(texto){
+  let h=2166136261;
+  for(const c of String(texto||"")){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}
+  return(h>>>0).toString(36);
+}
+const boolTexto=v=>/^(true|sim|1)$/i.test(String(v||""));
+// Uma linha da planilha vira um lançamento. Tudo chega como texto — a aba está
+// formatada como texto simples de propósito, senão o Sheets converte "05/2026"
+// em data e estraga a competência.
+const parseLinha=r=>({
+  data:r[0],desc:r[1],cat:r[2],
+  valor:parseFloat(String(r[3]||"0").replace(/[R$\s.]/g,"").replace(",","."))||0,
+  tipo:r[4],mes:r[5],ano:parseInt(r[6]),cartao:r[7],
+  parcAtual:parseInt(r[8])||1,parcTotal:parseInt(r[9])||1,mesFinal:r[10],
+  origem:r[11]||"",id:r[12]||"legacy-"+hashCurto(r.slice(0,12).join("|")),
+  produto:r[13]||"cartao",direcao:r[14]||(r[4]==="Reembolso"?"Crédito":"Débito"),
+  fixo:r[15]!==undefined?boolTexto(r[15]):["Fixo","Casa","Assinatura"].includes(r[4])
+});
+
+const parseMovLinha=r=>({
+  id:r[0]||"mov-"+hashCurto(r.join("|")),data:r[1],descOriginal:r[2]||r[3]||"",
+  desc:r[3]||r[2]||"",cat:r[4]||"Não classificado",direcao:r[5]||"Débito",
+  debito:valorBRL(r[6]),credito:valorBRL(r[7]),banco:r[8]||"—",
+  produto:r[9]||"conta",tipo:r[10]||r[5]||"Débito",fixo:boolTexto(r[11]),
+  mes:r[12]||"",fatura:r[13]||"",origem:r[14]||"",
+  confianca:parseFloat(String(r[15]||"0").replace(",","."))||0,
+  consideraGasto:boolTexto(r[16])
+});
+
+const parseSaldo=r=>({perfil:r[0],banco:r[1],produto:r[2]||"conta",
+  saldo:valorBRL(r[3]),atualizadoEm:r[4]||"",fonte:r[5]||""});
+
+function movimentosDeDados(dados){
+  return dados.map(r=>({id:r.id,data:r.data,descOriginal:r.desc,desc:r.desc,cat:r.cat,
+    direcao:r.direcao,debito:r.direcao==="Débito"?r.valor:0,
+    credito:r.direcao==="Crédito"?r.valor:0,banco:r.cartao,produto:r.produto,
+    tipo:r.tipo,fixo:r.fixo,mes:r.mes,fatura:r.fatura||"",origem:r.origem,
+    confianca:1,consideraGasto:true}));
+}
+
+async function carregarTudo(){
+  // A aba da Julia pode não existir ainda; o catch evita derrubar o painel todo.
+  const[txRows,juliaRows,splitRows,cfgL,compL,cfgJ,compJ,movL,movJ,saldos,ovRows,reembRows,pcRows]=await Promise.all([
+    fetchSheet("Transações!A5:P1000"),
+    fetchSheet("'Transações Julia'!A5:P1000").catch(()=>[]),
+    fetchSheet("Config!C9").catch(()=>[]),
+    fetchSheet(PERFIS.Lucas.orcamento).catch(()=>[]),
+    fetchSheet(PERFIS.Lucas.compromissos).catch(()=>[]),
+    fetchSheet(PERFIS.Julia.orcamento).catch(()=>[]),
+    fetchSheet(PERFIS.Julia.compromissos).catch(()=>[]),
+    fetchSheet("Movimentações!A2:Q2000").catch(()=>[]),
+    fetchSheet("'Movimentações Julia'!A2:Q2000").catch(()=>[]),
+    fetchSheet("Saldos!A2:F100").catch(()=>[]),
+    fetchSheet(RANGE_OVERRIDES).catch(()=>[]),
+    fetchSheet(RANGE_REEMBOLSOS).catch(()=>[]),
+    fetchSheet(RANGE_PARCELAS_CASAL).catch(()=>[]),
+  ]);
+  dadosPorPerfil.Lucas=txRows.filter(r=>r[0]).map(parseLinha);
+  dadosPorPerfil.Julia=juliaRows.filter(r=>r[0]).map(parseLinha);
+  movimentosPorPerfil.Lucas=movL.filter(r=>r[0]&&r[0]!=="id").map(parseMovLinha);
+  movimentosPorPerfil.Julia=movJ.filter(r=>r[0]&&r[0]!=="id").map(parseMovLinha);
+  if(!movimentosPorPerfil.Lucas.length){
+    movimentosPorPerfil.Lucas=movimentosDeDados(dadosPorPerfil.Lucas);
+    ledgerIncompletoPorPerfil.Lucas=true;
+  }
+  if(!movimentosPorPerfil.Julia.length){
+    movimentosPorPerfil.Julia=movimentosDeDados(dadosPorPerfil.Julia);
+    ledgerIncompletoPorPerfil.Julia=true;
+  }
+  saldosPorPerfil.Lucas=saldos.filter(r=>r[0]==="Lucas").map(parseSaldo);
+  saldosPorPerfil.Julia=saldos.filter(r=>r[0]==="Julia").map(parseSaldo);
+  SPLIT_LUCAS=parseFloat(String((splitRows[0]||[])[0]||"").replace("%","").replace(",","."))||0;
+  if(SPLIT_LUCAS>1)SPLIT_LUCAS/=100;   // a Config guarda 54,77%; aqui vira 0,5477
+  overridesRemotos=linhasParaOverrides(ovRows);
+  linhasRemotas=ovRows.length;
+  parcelasCasal=lerParcelasCasal(pcRows);
+  reembEsperados=reembRows.map(r=>String((r||[])[0]||"").trim().toLowerCase()).filter(Boolean);
+  lerConfig("Lucas",cfgL,compL);
+  lerConfig("Julia",cfgJ,compJ);
+  aplicarPerfil();
+  // O que estiver pendente no `localStorage` sobe agora. É por aqui que as
+  // edições feitas antes desta versão — as 11 dele de 18/08 — migram para a
+  // planilha sem ninguém precisar refazê-las.
+  sincronizarOverrides();
+}
+
+const valorBRL=s=>parseFloat(String(s).replace(/[R$\s.]/g,"").replace(",","."))||0;
+
+// A coluna de rateio aceita `casal`, `casal: lucas` e o nome de uma pessoa.
+// `casal` sozinho quer dizer "compartilhado e quem declara é quem paga" — era
+// o único caso enquanto só o Lucas tinha Config. `casal: lucas` na Config dela
+// diz que o compromisso é dos dois mas quem adianta o dinheiro é ele: no painel
+// dela o aluguel não pode aparecer inteiro, nem gerar "a receber".
+function lerConfig(perfilAlvo,linhasOrcamento,linhasCompromissos){
+  const cfg=configPorPerfil[perfilAlvo];
+  cfg.compromissos=linhasCompromissos.filter(r=>r[0]&&r[1]).map(r=>{
+    const rateio=String(r[3]||"");
+    const casal=/casal/i.test(rateio);
+    const dono=(rateio.match(/casal\s*[:\-]\s*(\w+)/i)||[])[1];
+    return{desc:r[0],valor:valorBRL(r[1]),cat:r[2]||"Diversos",casal,
+      quemPaga:casal?(dono?dono[0].toUpperCase()+dono.slice(1).toLowerCase():perfilAlvo):perfilAlvo};
+  }).filter(c=>c.valor>0);
+  cfg.orcamentos={...PERFIS[perfilAlvo].padrao};
+  cfg.piso=0;
+  linhasOrcamento.forEach(([c,o])=>{
+    if(!c||!o)return;
+    const val=valorBRL(o);
+    if(!val)return;
+    // Linha de renda mora na mesma tabela; não é categoria de orçamento.
+    if(/renda|piso/i.test(c)){cfg.piso=val;return;}
+    cfg.orcamentos[c]=val;
+  });
+}
+
+// ── TROCA DE PERFIL ───────────────────────────────────────
+// Um ponto só de verdade: tudo que depende de quem está sendo visto é resolvido
+// aqui, e o resto do painel continua lendo `allData`, `orcamentos`,
+// `compromissos` e `RENDA_PISO` sem saber que o titular mudou.
+function aplicarPerfil(){
+  const p=PERFIS[perfil],cfg=configPorPerfil[perfil];
+  allData=dadosPorPerfil[perfil];
+  movimentos=movimentosPorPerfil[perfil];
+  compromissos=cfg.compromissos;
+  orcamentos=cfg.orcamentos;
+  RENDA_PISO=cfg.piso;
+
+  document.body.dataset.perfil=perfil;
+  document.title="Agente Financeiro — "+perfil;
+  document.getElementById("perfil-avatar").textContent=p.inicial;
+  document.getElementById("perfil-nome").textContent=perfil;
+  const semConfig=!RENDA_PISO&&!compromissos.length;
+  document.getElementById("perfil-aviso").innerHTML=
+    `<span>👤</span><span>você está vendo o painel da <strong>${perfil}</strong>.`+
+    (semConfig
+      ? ` A Config dela ainda não foi preenchida na planilha — sem renda piso e sem compromissos fixos, o saldo aparece como “—” e as categorias vêm sem meta.`
+      : ` Renda piso, orçamento e compromissos fixos vêm do bloco dela na aba Config. O aluguel e as contas de casa entram pela parte que cabe a ela: quem adianta o dinheiro é o Lucas.`)+
+    `</span>`;
+  document.querySelectorAll(".perfil-opt[data-perfil]").forEach(b=>
+    b.classList.toggle("ativo",b.dataset.perfil===perfil));
+
+  // As categorias abertas são de outra pessoa; deixá-las abertas mostraria o
+  // detalhe da anterior por um instante antes de o render fechar.
+  catsAbertas.clear();
+  posicionarMesInicial();
+  renderAll();
+}
+
+function trocarPerfil(novo){
+  fecharMenuPerfil();
+  if(!PERFIS[novo]||novo===perfil)return;
+  perfil=novo;
+  localStorage.setItem("perfil",perfil);
+  aplicarPerfil();
+}
+
+function alternarMenuPerfil(ev){
+  ev.stopPropagation();
+  document.getElementById("perfil-chip").classList.toggle("aberto");
+}
+function fecharMenuPerfil(){
+  document.getElementById("perfil-chip").classList.remove("aberto");
+}
+
+// Abre no mês mais recente com GASTO real. Um estorno futuro esperado não
+// transforma setembro no mês corrente antes de ele acontecer.
+function posicionarMesInicial(){
+  const ult=ultimoMesReal();
+  if(!ult)return;
+  mesAtual={m:(ult-1)%12+1,y:Math.floor((ult-1)/12)};
+}
+
+// ── MESES FUTUROS ─────────────────────────────────────────
+// Depois do último mês com lançamento real, a tela passa a mostrar o mês
+// montado: compromissos declarados na Config + parcelas que ainda correm nele.
+// Assim navegar para setembro mostra número em vez de tela vazia, e todo o
+// resto (KPIs, categorias, drill-down) funciona sem saber que é projeção.
+const chaveMes=(m,y)=>y*12+m;
+
+// Só GASTO define até onde a base é real. Um crédito lançado em competência
+// futura — estorno em contestação, por exemplo — não pode fazer o painel achar
+// que aquele mês já aconteceu e desligar a projeção dele.
+function ultimoMesReal(){
+  const meses=getDisplayData().filter(r=>r.mes&&r.tipo!=="Reembolso")
+    .map(r=>{const[m,y]=r.mes.split("/").map(Number);return chaveMes(m,y);});
+  return meses.length?Math.max(...meses):0;
+}
+
+function mesEhProjetado(m,y){
+  const ult=ultimoMesReal();
+  return ult>0&&chaveMes(m,y)>ult;
+}
+
+// A mesma compra muda de grafia entre os PDFs e o OCR de agosto. Normaliza
+// caixa, pontuação, ordem dos tokens e sufixos empresariais que o OCR omite.
+// A chave ainda inclui término, total de parcelas e valor aproximado para não
+// juntar duas compras diferentes feitas na mesma loja.
+const RUIDO_DESC_PARCELA=new Set(["A","S","SA","LTDA","CCI"]);
+function lojaNormalizadaParcela(desc){
+  // Sem \b antes do número: o Itaú cola o sufixo no nome da loja
+  // ("LOJABRSAOP03/10"), e ali não existe fronteira de palavra entre o "P" e
+  // o "0". Com \b o sufixo sobrevivia, cada parcela da mesma compra virava uma
+  // compra diferente, e a projeção somava as quatro de uma vez.
+  return String(desc||"").replace(/\d{1,2}\/\d{1,2}\s*$/,"")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .toUpperCase().replace(/[^A-Z0-9]+/g," ").trim().split(/\s+/)
+    .filter(t=>t&&!RUIDO_DESC_PARCELA.has(t)).sort().join("");
+}
+function chaveParcela(r){
+  const valorDecimos=Math.round((r.valor||0)*10);
+  return`${lojaNormalizadaParcela(r.desc)}||${r.mesFinal}||${r.parcTotal}||${valorDecimos}`;
+}
+// Parcelas de casa, por titular do cartão — mesma lista do exportador
+// (`PARCELAS_CASAL` e `PARCELAS_CASAL_JULIA`). A descrição sozinha é ampla
+// demais: uma mesma loja costuma ter várias compras, e nomes repetidos podem
+// ser coisas diferentes. Por isso cada regra também trava o valor mensal
+// observado na fatura, e uma compra que saiu do acerto simplesmente não entra
+// na lista, mesmo continuando como compra de casa na base.
+//
+// A coluna `loja` é o resultado de lojaNormalizadaParcela(), que tira acento e
+// pontuação, quebra em tokens e **ordena** — então o nome na Config é o dos
+// tokens em ordem alfabética colados, não o texto como aparece na fatura.
+// A lista mora na Config, não aqui: cada linha é uma compra real, com nome de
+// loja e valor de parcela, e este arquivo é servido publicamente.
+// `integral` marca a compra que volta inteira para o outro em vez de ser
+// rateada — é o caso de uma compra feita no cartão de um mas que é do outro,
+// que não tem espelho do lado de lá.
+let parcelasCasal={Lucas:[],Julia:[]};
+
+function lerParcelasCasal(linhas){
+  const mapa={Lucas:[],Julia:[]};
+  (linhas||[]).forEach(r=>{
+    const dono=String((r||[])[0]||"").trim();
+    const loja=String((r||[])[1]||"").trim().toUpperCase();
+    if(!mapa[dono]||!loja||loja==="LOJA")return;
+    mapa[dono].push({loja,
+      // Vazio quer dizer "qualquer valor desta loja".
+      valores:String(r[2]||"").split(";").map(valorBRL).filter(v=>v>0),
+      integral:/integral/i.test(String(r[3]||""))});
+  });
+  return mapa;
+}
+
+function parcelaIntegralDoOutro(r){
+  const loja=lojaNormalizadaParcela(r.desc);
+  return(parcelasCasal[perfil]||[]).some(x=>x.integral&&loja.includes(x.loja));
+}
+
+// Quanto de uma parcela do perfil ativo é do outro. No cartão do Lucas a Julia
+// paga 1−SPLIT_LUCAS; no cartão dela, o Lucas paga SPLIT_LUCAS.
+function pctDoOutroNaParcela(r){
+  if(parcelaIntegralDoOutro(r))return 1;
+  if(!SPLIT_LUCAS)return 0;
+  const loja=lojaNormalizadaParcela(r.desc);
+  const v=r.valor||0;
+  const compartilhada=(parcelasCasal[perfil]||[]).some(x=>!x.integral&&loja.includes(x.loja)&&
+    (!x.valores.length||x.valores.some(y=>Math.abs(v-y)<=1)));
+  return compartilhada?(perfil==="Lucas"?1-SPLIT_LUCAS:SPLIT_LUCAS):0;
+}
+
+// Quanto de um compromisso aparece no painel de quem está sendo visto, e
+// quanto dele é de fato dessa pessoa. Os dois só diferem quando o compromisso é
+// do casal: quem adianta o dinheiro mostra o valor cheio e cobra a diferença;
+// quem não adianta mostra direto a parte que lhe cabe, e não tem o que cobrar.
+const meuRateioAtual=()=>perfil==="Lucas"?SPLIT_LUCAS:1-SPLIT_LUCAS;
+const euAdianto=c=>!c.casal||c.quemPaga===perfil;
+const compromissoNoPainel=c=>euAdianto(c)?c.valor:c.valor*meuRateioAtual();
+const compromissoMeu=c=>c.casal&&SPLIT_LUCAS?c.valor*meuRateioAtual():c.valor;
+
+function dadosProjetados(m,y){
+  if(!mesEhProjetado(m,y))return[];
+  const ms=mesStr(m,y);
+  const base={mes:ms,ano:y,data:"01/"+ms,projetado:true};
+  // Compromissos fixos: mesma classificação que teriam no mês real, para os
+  // KPIs somarem nos mesmos baldes.
+  // Compromisso que o outro adianta entra como "A pagar", igual aos meses
+  // reais — senão a mesma obrigação muda de nome ao cruzar para o futuro.
+  const fixos=compromissos.map(c=>({...base,
+    desc:euAdianto(c)?c.desc:`${c.desc} (${Math.round(meuRateioAtual()*100)}%)`,
+    cat:euAdianto(c)?c.cat:CAT_ACERTO,
+    valor:compromissoNoPainel(c),
+    tipo:c.cat==="Casa"?"Casa":"Fixo",
+    cartao:"projetado",parcAtual:1,parcTotal:1,mesFinal:ms}));
+  // Parcelas que ainda não terminaram nesse mês.
+  const parcelas=getParcUnicas().filter(r=>{
+    const[mf,yf]=r.mesFinal.split("/").map(Number);
+    return chaveMes(m,y)<=chaveMes(mf,yf);
+  }).map(r=>{
+    const[mr,yr]=r.mes.split("/").map(Number);
+    const avancou=chaveMes(m,y)-chaveMes(mr,yr);
+    return{...r,...base,cartao:r.cartao||"projetado",
+      parcAtual:Math.min(r.parcTotal,r.parcAtual+avancou)};
+  });
+  // A parte da Julia nos compromissos do casal, item a item — mesmo tratamento
+  // que os meses reais recebem do exportador, para a categoria "A receber"
+  // abrir e mostrar de onde vem cada pedaço também no futuro.
+  const pctOutro=SPLIT_LUCAS?(perfil==="Lucas"?1-SPLIT_LUCAS:SPLIT_LUCAS):0;
+  // Só quem adianta o dinheiro tem o que receber de volta.
+  const aReceberFixos=pctOutro?compromissos.filter(c=>c.casal&&euAdianto(c)).map(c=>({...base,
+    desc:`A receber · ${c.desc} (${Math.round(pctOutro*100)}%)`,
+    cat:CAT_ACERTO,valor:c.valor*pctOutro,tipo:"Reembolso",
+    cartao:"projetado",parcAtual:1,parcTotal:1,mesFinal:ms})):[];
+  // Compra marcada como `integral` continua devida ao outro enquanto suas
+  // parcelas correm. Sem isto ela aparecia como gasto de quem passou o cartão.
+  const aReceberParcelas=parcelas.map(r=>({r,pct:pctDoOutroNaParcela(r)}))
+    .filter(x=>x.pct>0).map(({r,pct})=>({...r,
+      desc:`A receber · ${r.desc} (${Math.round(pct*100)}%)`,
+      cat:CAT_ACERTO,valor:r.valor*pct,tipo:"Reembolso"}));
+  return[...fixos,...parcelas,...aReceberFixos,...aReceberParcelas];
+}
+
+function dadosMes(m,y,cartao=""){
+  const ms=mesStr(m,y);
+  const reais=getDisplayData().filter(r=>r.mes===ms&&(!cartao||r.cartao===cartao));
+  if(!mesEhProjetado(m,y))return reais;
+  // Mês futuro SOMA o que já está lançado nele com a projeção, em vez de
+  // escolher um dos dois: um estorno esperado em setembro não pode fazer o mês
+  // perder os fixos e as parcelas que também vão cair lá.
+  const proj=dadosProjetados(m,y);
+  return[...reais,...(cartao?proj.filter(r=>r.cartao===cartao):proj)];
+}
+
+// ── DRILL-DOWN POR CATEGORIA ──────────────────────────────
+// Os lançamentos que compõem o número da categoria. Repete exatamente os
+// filtros usados para somar `porCat`, senão o detalhe não fecha com o total
+// mostrado — que é justamente o que se quer conferir ao abrir.
+function lancamentosDaCategoria(txs,cat){
+  const gastos=txs.filter(r=>r.tipo!=="Reembolso"&&r.cat===cat);
+  // O acerto lista os dois lados sempre: uma lista corrida com o que se deve e
+  // o que se tem a receber é o que deixa o líquido conferível item a item.
+  const estornos=(isLiq()||cat===CAT_ACERTO)
+    ? txs.filter(r=>r.tipo==="Reembolso"&&r.cat===cat)
+    : [];
+  return [...gastos.map(r=>({r,sinal:1})),...estornos.map(r=>({r,sinal:-1}))]
+    .sort((a,b)=>b.r.valor-a.r.valor);
+}
+
+function detalheCategoria(txs,cat){
+  const itens=lancamentosDaCategoria(txs,cat);
+  if(!itens.length)return"";
+  const linhas=itens.map(({r,sinal})=>`<div class="cat-det-linha">
+    <span class="cat-det-data">${esc((r.data||"").slice(0,5))}</span>
+    <span class="cat-det-desc" title="${esc(r.desc||"")}">${esc(r.desc||"")}</span>
+    <span class="cat-det-tipo">${esc(r.tipo||"")}${r.parcTotal>1?` ${r.parcAtual}/${r.parcTotal}`:""}</span>
+    <span class="cat-det-val"${sinal<0?' style="color:var(--green)"':""}>${sinal<0?"−":""}${fmt(r.valor)}</span>
+  </div>`).join("");
+  const soma=itens.reduce((s,{r,sinal})=>s+r.valor*sinal,0);
+  const aviso=(cat===CAT_ACERTO&&!isLiq())
+    ? `<div class="cat-det-linha" style="color:var(--muted)"><span class="cat-det-desc">o total na linha acima mostra só o que você deve — o toggle está em bruto. O líquido é o número ao lado.</span></div>`
+    : "";
+  return`<tr class="cat-detalhe"><td colspan="4"><div class="cat-det-box">${linhas}${aviso}
+    <div class="cat-det-rodape"><span>${itens.length} lançamento${itens.length>1?"s":""}</span><span>${soma<0?"−":""}${fmt(soma)}</span></div>
+  </div></td></tr>`;
+}
+
+function alternarCategoria(cat){
+  if(catsAbertas.has(cat))catsAbertas.delete(cat);
+  else catsAbertas.add(cat);
+  renderizarMes();
+}
+
+function alternarTodasCategorias(){
+  if(catsAbertas.size)catsAbertas.clear();
+  else catsVisiveis.forEach(c=>catsAbertas.add(c));
+  renderizarMes();
+}
+
+function reembolsosMes(txs){
+  return txs.filter(r=>r.tipo==="Reembolso").reduce((s,r)=>s+r.valor,0);
+}
+
+function renderAll(){
+  document.getElementById("toggle-label").textContent=isLiq()?"líquido":"bruto";
+  // O rótulo nasce fixo no HTML e só era atualizado por navMes(). Como
+  // posicionarMesInicial() move o mês sem passar por lá, o cabeçalho mentia até
+  // o primeiro clique nas setas: mostrava 04/2026 exibindo dados de agosto.
+  document.getElementById("month-label").textContent=mesStr(mesAtual.m,mesAtual.y);
+  renderizarMes();renderTransacoes();renderizarHistorico();
+}
+
+// ── LANÇAMENTOS ───────────────────────────────────────────
+// Lista crua do mês. Existe para conferir classificação linha a linha: as
+// outras abas só mostram agregado, então um lançamento com categoria errada
+// fica invisível nelas.
+function renderLancamentos(){
+  const busca=(document.getElementById("lanc-search").value||"").toLowerCase();
+  const txs=dadosMes(mesAtual.m,mesAtual.y,cartaoFil())
+    .filter(r=>!busca||[r.desc,r.cat,r.tipo,r.cartao].some(c=>(c||"").toLowerCase().includes(busca)))
+    .sort((a,b)=>b.valor-a.valor);
+  const total=txs.filter(r=>r.tipo!=="Reembolso").reduce((s,r)=>s+r.valor,0);
+  document.getElementById("lanc-resumo").textContent=
+    `${txs.length} lançamentos · ${fmt(total)}`;
+  document.getElementById("lanc-body").innerHTML=txs.length
+    ? txs.map(r=>`<tr>
+        <td style="color:var(--muted);font-family:var(--mono);font-size:11px;white-space:nowrap">${r.data||"—"}</td>
+        <td>${r.desc}</td>
+        <td style="color:var(--muted)">${r.cat}</td>
+        <td style="color:var(--muted);font-family:var(--mono);font-size:11px">${r.tipo}</td>
+        <td style="color:var(--muted);font-family:var(--mono);font-size:11px">${r.cartao||"—"}</td>
+        <td style="text-align:right;font-family:var(--mono);${r.tipo==="Reembolso"?"color:var(--green)":""}">${r.tipo==="Reembolso"?"−":""}${fmt(r.valor)}</td>
+      </tr>`).join("")
+    : `<tr><td colspan="6" style="color:var(--muted);padding:18px 0">nenhum lançamento neste filtro</td></tr>`;
+}
+
+// ── MÊS ATUAL ─────────────────────────────────────────────
+function renderizarMes(){
+  const txs=dadosMes(mesAtual.m,mesAtual.y,cartaoFil());
+  const variavel=txs.filter(r=>r.tipo==="Variável").reduce((s,r)=>s+r.valor,0);
+  const parcela=txs.filter(r=>r.tipo==="Parcela").reduce((s,r)=>s+r.valor,0);
+  const assinatura=txs.filter(r=>r.tipo==="Assinatura").reduce((s,r)=>s+r.valor,0);
+  const fixo=txs.filter(r=>r.tipo==="Fixo").reduce((s,r)=>s+r.valor,0);
+  const casa=txs.filter(r=>r.tipo==="Casa").reduce((s,r)=>s+r.valor,0);
+  const reembolso=txs.filter(r=>r.tipo==="Reembolso").reduce((s,r)=>s+r.valor,0);
+  const totalBruto=variavel+parcela+assinatura+fixo+casa;
+  const totalLiq=totalBruto-reembolso;
+  const total=isLiq()?totalLiq:totalBruto;
+  const saldo=RENDA_PISO-total;
+
+  // Alert reembolso faltando
+  const alertArea=document.getElementById("reemb-alert-area");
+  const mesAtualStr=mesStr(mesAtual.m,mesAtual.y);
+  const parcial=PERFIS[perfil].mesesParciais.includes(mesAtualStr);
+  const descsReemb=txs.filter(r=>r.tipo==="Reembolso").map(r=>r.desc.toLowerCase());
+  // A lista de reembolsos esperados é do Lucas; no perfil dela não há o que
+  // cobrar por esse caminho.
+  const faltando=perfil!=="Lucas"?[]:reembEsperados.filter(k=>
+    txs.some(r=>r.desc.toLowerCase().includes(k))&&
+    !descsReemb.some(d=>d.includes(k))
+  );
+  let avisos="";
+  if(mesEhProjetado(mesAtual.m,mesAtual.y)){
+    const nFix=compromissos.length;
+    avisos+=`<div class="reemb-alert" style="background:rgba(122,162,247,0.08);border-color:rgba(122,162,247,0.3)"><span class="reemb-alert-icon">🔮</span><div class="reemb-alert-text" style="color:var(--blue)"><strong>Mês projetado:</strong> ainda não aconteceu. Mostra ${nFix} compromisso${nFix===1?"":"s"} fixo${nFix===1?"":"s"} da aba Config mais as parcelas que ainda correm neste mês. Gasto variável não entra — ele não dá para prever lançamento a lançamento.</div></div>`;
+  }
+  if(parcial){
+    avisos+=`<div class="reemb-alert"><span class="reemb-alert-icon">🔵</span><div class="reemb-alert-text"><strong>Mês parcial:</strong> ${PERFIS[perfil].avisoParcial} Não compare com um mês fechado.</div></div>`;
+  }
+  if(faltando.length>0){
+    avisos+=`<div class="reemb-alert"><span class="reemb-alert-icon">🟡</span><div class="reemb-alert-text"><strong>Reembolso esperado não lançado:</strong> ${faltando.join(", ")}</div></div>`;
+  }
+  alertArea.innerHTML=avisos;
+
+  document.getElementById("kpi-grid").innerHTML=`
+    <div class="kpi-card"><div class="kpi-label">gasto novo</div><div class="kpi-value red">${fmt(variavel)}</div><div class="kpi-sub">decisões deste mês</div></div>
+    <div class="kpi-card"><div class="kpi-label">parcelas</div><div class="kpi-value amber">${fmt(parcela)}</div><div class="kpi-sub">compras anteriores</div></div>
+    <div class="kpi-card"><div class="kpi-label">fixos + casa</div><div class="kpi-value blue">${fmt(fixo+casa+assinatura)}</div><div class="kpi-sub">recorrentes</div></div>
+    <div class="kpi-card"><div class="kpi-label">a receber</div><div class="kpi-value green">${fmt(reembolso)}</div><div class="kpi-sub">reembolsos</div></div>
+    <div class="kpi-card"><div class="kpi-label">saldo ${isLiq()?'líquido':'bruto'}</div><div class="kpi-value ${RENDA_PISO?(saldo>=0?'green':'red'):''}">${RENDA_PISO?(saldo<0?"−":"")+fmt(saldo):'—'}</div><div class="kpi-sub">${RENDA_PISO?`piso ${fmt(RENDA_PISO)} − ${isLiq()?'líquido':'bruto'}`:'defina "Renda piso" na aba Config'}</div></div>
+  `;
+
+  const casaLiq=casa+fixo+assinatura-txs.filter(r=>r.tipo==="Reembolso"&&r.cat==="Casa").reduce((s,r)=>s+r.valor,0);
+  document.getElementById("decomp-grid").innerHTML=`
+    <div class="decomp-card"><div class="decomp-label">gasto novo</div><div class="decomp-value" style="color:var(--red)">${fmt(variavel)}</div><div class="decomp-sub">variável</div></div>
+    <div class="decomp-card"><div class="decomp-label">parcelas</div><div class="decomp-value" style="color:var(--amber)">${fmt(parcela)}</div><div class="decomp-sub">compras anteriores</div></div>
+    <div class="decomp-card"><div class="decomp-label">fixos + casa${isLiq()?' (líq)':''}</div><div class="decomp-value" style="color:var(--blue)">${fmt(isLiq()?casaLiq:fixo+casa+assinatura)}</div><div class="decomp-sub">recorrentes</div></div>
+    <div class="decomp-card"><div class="decomp-label">reembolsos</div><div class="decomp-value" style="color:var(--green)">+${fmt(reembolso)}</div><div class="decomp-sub">volta pro bolso</div></div>
+  `;
+
+  // Categorias — a linha abre e mostra o que compõe o número.
+  // TODO gasto entra aqui, inclusive Fixo e Casa: a tabela fecha com o total do
+  // mês. `fixoPorCat` guarda quanto de cada categoria é compromisso fixo, para
+  // a linha poder explicar por que estourou o orçamento — a FIAP sozinha é
+  // R$ 604 contra um orçamento de Estudo de R$ 200, e sem essa marcação a linha
+  // vermelha viraria alarme falso permanente.
+  const porCat={},fixoPorCat={};
+  txs.filter(r=>r.tipo!=="Reembolso"&&r.cat).forEach(r=>{
+    porCat[r.cat]=(porCat[r.cat]||0)+r.valor;
+    if(["Fixo","Casa"].includes(r.tipo))fixoPorCat[r.cat]=(fixoPorCat[r.cat]||0)+r.valor;
+  });
+  // Reembolso desconta da própria categoria. Antes só descontava se a categoria
+  // já tivesse gasto (`if(porCat[r.cat])`), o que fazia a categoria "A receber"
+  // — que só tem crédito — sumir da tabela sem deixar rastro.
+  if(isLiq()) txs.filter(r=>r.tipo==="Reembolso"&&r.cat).forEach(r=>{
+    porCat[r.cat]=(porCat[r.cat]||0)-r.valor;
+  });
+  const maxV=Math.max(...Object.values(porCat),1);
+  // Ordena por valor, mas mantém os créditos ("A receber") no fim: eles não
+  // competem com gasto e no topo só atrapalhariam a leitura.
+  const ordenadas=Object.entries(porCat).filter(([,v])=>Math.abs(v)>0.005)
+    .sort((a,b)=>(a[1]<0)-(b[1]<0)||b[1]-a[1]);
+  catsVisiveis=ordenadas.map(([c])=>c);
+  const rows=ordenadas.map(([cat,val])=>{
+    const aberta=catsAbertas.has(cat);
+    const chevron=`<span class="cat-chevron">${aberta?"▾":"▸"}</span>`;
+    let linha;
+    if(cat===CAT_ACERTO){
+      // Não tem orçamento em nenhum dos sentidos: é dívida entre os dois, não
+      // decisão de gasto. A nota diz para onde o líquido aponta.
+      const recebe=val<0;
+      // No modo bruto a linha mostra só um dos lados, então a nota não pode
+      // prometer líquido: quem fecha a conta ali é o rodapé do detalhe.
+      const nota=!isLiq()
+        ? `só o que você deve — abra para ver o líquido com o que ${outroPerfil()} te deve`
+        : recebe
+          ? `líquido a receber de ${outroPerfil()}, já descontado o que você deve`
+          : `líquido a transferir para ${outroPerfil()}, já descontado o que ${outroPerfil()} te deve`;
+      linha=`<tr class="cat-row${recebe?" credito":""}${aberta?" aberta":""}" data-cat="${cat}"><td class="cat-name">${chevron}${cat}<span class="cat-fech-nota">${nota}</span></td><td></td><td class="cat-vals">${recebe?"−":""}${fmt(val)}</td><td class="cat-status">${recebe?"💚":"🤝"}</td></tr>`;
+    }else if(val<0){
+      // Crédito: não tem orçamento para comparar nem barra que faça sentido.
+      linha=`<tr class="cat-row credito${aberta?" aberta":""}" data-cat="${cat}"><td class="cat-name">${chevron}${cat}<span class="cat-fech-nota">volta pro bolso quando ${outroPerfil()} acertar</span></td><td></td><td class="cat-vals">−${fmt(val)}</td><td class="cat-status">💚</td></tr>`;
+    }else{
+      const orc=orcamentos[cat]||0;const pct=orc>0?(val/orc):0;
+      const barPct=Math.min(val/maxV*100,100);
+      const color=pct>1?"var(--red)":pct>0.85?"var(--amber)":"var(--green)";
+      const emoji=pct>1?"🔴":pct>0.85?"🟡":"🟢";
+      const fixo=fixoPorCat[cat]||0;
+      const tagFixo=fixo>0?`<span class="cat-tag-fixo" title="parte da categoria que é compromisso fixo — não é decisão do mês">fixo ${fmt(fixo)}</span>`:"";
+      linha=`<tr class="cat-row${aberta?" aberta":""}" data-cat="${cat}"><td class="cat-name">${chevron}${cat}${tagFixo}</td><td><div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${barPct}%;background:${color}"></div></div></td><td class="cat-vals">${fmt(val)}${orc?" / "+fmt(orc):""}</td><td class="cat-status">${emoji}</td></tr>`;
+    }
+    return linha+(aberta?detalheCategoria(txs,cat):"");
+  }).join("");
+  // Fechamento: a tabela por categoria NÃO soma o total do mês, porque fixos,
+  // casa e o que tem categoria "Casa" ficam de fora dela de propósito (têm KPI
+  // próprio). Sem mostrar a conta, o usuário compara os dois números e acha que
+  // um está errado — foi exatamente o que aconteceu.
+  // Fechamento. Agora a tabela cobre tudo, então a soma tem que dar o total do
+  // mês. A linha de resíduo só aparece se sobrar algo — seria lançamento sem
+  // categoria, que hoje não existe, mas é o tipo de coisa que aparece quando
+  // entra fonte nova e some sem ninguém notar.
+  const somaCategorias=ordenadas.reduce((s,[,v])=>s+v,0);
+  const residuo=total-somaCategorias;
+  const totalFixo=Object.values(fixoPorCat).reduce((s,v)=>s+v,0);
+  // "Decisões do mês" tem que sair do gasto BRUTO menos os fixos. Calcular a
+  // partir do total já líquido dava número negativo e o fmt() escondia o sinal.
+  const gastoBruto=ordenadas.filter(([,v])=>v>0).reduce((s,[,v])=>s+v,0);
+  const creditos=ordenadas.filter(([,v])=>v<0).reduce((s,[,v])=>s+v,0);
+  const decisoes=gastoBruto-totalFixo;
+  const rodape=rows?`
+    ${Math.abs(residuo)>0.5?`<tr class="cat-fechamento">
+      <td class="cat-name">sem categoria<span class="cat-fech-nota">lançamento que não caiu em nenhuma categoria — vale conferir</span></td><td></td>
+      <td class="cat-vals">${fmt(residuo)}</td><td></td>
+    </tr>`:""}
+    <tr class="cat-fechamento total">
+      <td class="cat-name">= total do mês${isLiq()?" (líquido)":""}${totalFixo>0?`<span class="cat-fech-nota">${fmt(totalFixo)} fixos · ${fmt(decisoes)} decisões do mês${creditos<0?` · −${fmt(creditos)} a receber`:""}</span>`:""}</td><td></td>
+      <td class="cat-vals">${fmt(total)}</td><td></td>
+    </tr>`:"";
+
+  const tabela=document.getElementById("cat-table");
+  tabela.innerHTML=(rows+rodape)||"<tr><td colspan='4' style='color:var(--muted);padding:20px 0;font-size:13px'>Nenhuma transação neste mês</td></tr>";
+  // Listener por delegação em vez de onclick inline: nome de categoria tem
+  // acento, barra e espaço ("Roupas / Aparência"), e escapar isso em atributo
+  // HTML é pedir bug.
+  tabela.querySelectorAll("tr[data-cat]").forEach(tr=>{
+    tr.addEventListener("click",()=>alternarCategoria(tr.dataset.cat));
+  });
+  const btn=document.getElementById("btn-detalhar");
+  if(btn)btn.textContent=catsAbertas.size?"▾ recolher tudo":"▸ detalhar tudo";
+
+  // Comparativo mês anterior
+  const antM=mesAtual.m===1?12:mesAtual.m-1;
+  const antY=mesAtual.m===1?mesAtual.y-1:mesAtual.y;
+  const ant=dadosMes(antM,antY,cartaoFil());
+  const catAnt={},catAtu={};
+  ant.filter(r=>r.tipo!=="Reembolso").forEach(r=>{catAnt[r.cat]=(catAnt[r.cat]||0)+r.valor;});
+  txs.filter(r=>r.tipo!=="Reembolso").forEach(r=>{catAtu[r.cat]=(catAtu[r.cat]||0)+r.valor;});
+  const allCats=[...new Set([...Object.keys(catAnt),...Object.keys(catAtu)])].filter(c=>c&&c!=="Reembolso");
+  document.getElementById("comp-cat-body").innerHTML=allCats.sort().map(cat=>{
+    const a=catAnt[cat]||0,u=catAtu[cat]||0,d=u-a;
+    const clr=d>0?"var(--red)":d<0?"var(--green)":"var(--muted)";
+    return`<tr><td>${cat}</td><td style="font-family:var(--mono);color:var(--muted)">${a>0?fmt(a):"—"}</td><td style="font-family:var(--mono)">${u>0?fmt(u):"—"}</td><td style="font-family:var(--mono);color:${clr}">${d!==0?(d>0?"+":"")+fmt(d):"—"}</td></tr>`;
+  }).join("");
+
+  document.getElementById("mes-loading").style.display="none";
+  document.getElementById("mes-content").style.display="block";
+}
+
+// ── HISTÓRICO ─────────────────────────────────────────────
+function renderizarHistorico(){
+  const displayData=getDisplayData();
+  const meses={};
+  displayData.filter(r=>r.tipo!=="Reembolso"&&r.mes).forEach(r=>{meses[r.mes]=(meses[r.mes]||0)+r.valor;});
+  if(isLiq()) displayData.filter(r=>r.tipo==="Reembolso"&&r.mes).forEach(r=>{if(meses[r.mes])meses[r.mes]-=r.valor;});
+  const ordem=Object.keys(meses).sort((a,b)=>{const[ma,ya]=a.split("/").map(Number);const[mb,yb]=b.split("/").map(Number);return ya*12+ma-(yb*12+mb);}).slice(-12);
+  const maxV=Math.max(...ordem.map(m=>meses[m]),1);
+  document.getElementById("chart-bars").innerHTML=ordem.map(mes=>{
+    const[m,y]=mes.split("/").map(Number);
+    const h=Math.max((meses[mes]/maxV)*140,4);
+    const isAtual=mes===mesStr(mesAtual.m,mesAtual.y);
+    return`<div class="chart-bar-group"><div class="chart-bar" style="height:${h}px;background:${isAtual?"var(--accent)":"var(--bg3)"};border:1px solid ${isAtual?"var(--accent)":"var(--border2)"};" title="${mes}: ${fmt(meses[mes])}"></div><div class="chart-label">${labelMes(m,y)}</div></div>`;
+  }).join("");
+  const mesAntStr=mesAtual.m===1?mesStr(12,mesAtual.y-1):mesStr(mesAtual.m-1,mesAtual.y);
+  const mesAtStr=mesStr(mesAtual.m,mesAtual.y);
+  const ant={},atu={};
+  displayData.filter(r=>r.mes===mesAntStr).forEach(r=>{ant[r.cat]=(ant[r.cat]||0)+r.valor;});
+  displayData.filter(r=>r.mes===mesAtStr).forEach(r=>{atu[r.cat]=(atu[r.cat]||0)+r.valor;});
+  const cats=[...new Set([...Object.keys(ant),...Object.keys(atu)])].filter(c=>c&&c!=="Reembolso");
+  document.getElementById("hist-cat-body").innerHTML=cats.sort().map(cat=>{
+    const a=ant[cat]||0,u=atu[cat]||0,d=u-a;
+    const clr=d>0?"var(--red)":d<0?"var(--green)":"var(--muted)";
+    return`<tr><td>${cat}</td><td style="font-family:var(--mono);color:var(--muted)">${a>0?fmt(a):"—"}</td><td style="font-family:var(--mono)">${u>0?fmt(u):"—"}</td><td style="font-family:var(--mono);color:${clr}">${d!==0?(d>0?"+":"")+fmt(d):"—"}</td></tr>`;
+  }).join("");
+  document.getElementById("hist-loading").style.display="none";
+  document.getElementById("hist-content").style.display="block";
+}
+
+// ── TRANSAÇÕES E CORREÇÕES ───────────────────────────────
+// A descrição original nunca é a chave: duas compras iguais podem ocorrer no
+// mesmo dia. O ID vem da base canônica e permite que uma correção alcance todas
+// as visões sem alterar outro lançamento por acidente.
+const CATEGORIAS_EDITAVEIS=["Alimentação","Transporte - Uber","Transporte - Ônibus",
+  "Lazer","Saúde","Roupas / Aparência","Assinaturas","Estudo",
+  "Presentes / Família","Presente Julia","Viagem","Casa","Compras",
+  "Entradas","Transferências","Pagamento de fatura",
+  "Investimentos","Reembolso","Diversos","Não classificado"];
+
+const semAcento=s=>String(s??"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+// ── OVERRIDES ─────────────────────────────────────────────
+// A verdade mora na aba `Overrides` da planilha; o `localStorage` virou fila
+// de pendências. Quem edita grava local na hora — a tela responde sem esperar
+// a rede — e a fila é empurrada para a planilha logo em seguida. Se a rede ou
+// a permissão falharem, a edição continua na fila e o botão diz isso, em vez
+// de fingir que salvou.
+//
+// As colunas são as mesmas do CSV de `exportarEdicoes`, de propósito: o
+// `reclassificar.py` já sabe ler esse formato, e a mesma aba serve de fila de
+// revisão para a arquitetura do Telegram.
+const ABA_OVERRIDES="Overrides";
+const RANGE_OVERRIDES="Overrides!A2:L2000";
+// Quem o Lucas espera que reembolse. São nomes de terceiros, então moram na
+// Config e não neste arquivo. Uma coluna, um nome por linha.
+const RANGE_REEMBOLSOS="Config!B49:B60";
+// Compras parceladas que são do casal, ou que são inteiras do outro. Colunas:
+// perfil, loja normalizada, valores separados por `;`, rateio.
+const RANGE_PARCELAS_CASAL="Config!B63:E80";
+const COLS_OVERRIDES=["perfil","id","data","banco","produto","valor",
+  "desc_original","desc_novo","cat_original","cat_nova","fixo","editado_em"];
+let overridesRemotos={};      // o que a planilha confirmou
+let linhasRemotas=0;          // linhas ocupadas lá, para limpar o que encolher
+let abaOverridesOk=false;
+let overridesSync={estado:"parado",erro:""};
+let sincronizando=false,ressincronizar=false;
+
+const chaveOverride=id=>`${perfil}:${id}`;
+function getPendentes(){try{return JSON.parse(localStorage.getItem("txOverridesV2")||"{}");}catch{return{};}}
+function setPendentes(p){localStorage.setItem("txOverridesV2",JSON.stringify(p));}
+// A remoção precisa viajar como marca — some da tela na hora, mas só apaga a
+// linha da planilha quando a fila sobe. Um `delete` local sumiria com o pedido
+// e a planilha continuaria com a edição antiga.
+function getOverrides(){
+  const todos={...overridesRemotos,...getPendentes()};
+  Object.keys(todos).forEach(k=>{if(todos[k]&&todos[k].removido)delete todos[k];});
+  return todos;
+}
+function saveOverride(id,novoDesc,novaCat,fixo){
+  const p=getPendentes();
+  p[chaveOverride(id)]={desc:novoDesc,cat:novaCat,fixo:!!fixo,atualizadoEm:new Date().toISOString()};
+  setPendentes(p);
+  sincronizarOverrides();
+}
+function apagarOverride(id){
+  const k=chaveOverride(id),p=getPendentes();
+  if(overridesRemotos[k])p[k]={removido:true,atualizadoEm:new Date().toISOString()};
+  else delete p[k];
+  setPendentes(p);
+  sincronizarOverrides();
+}
+
+function linhasParaOverrides(linhas){
+  const mapa={};
+  (linhas||[]).forEach(r=>{
+    if(!r||!r[0]||!r[1]||r[0]==="perfil")return;
+    mapa[`${r[0]}:${r[1]}`]={desc:r[7]||"",cat:r[9]||"",
+      fixo:/^fixo$/i.test(String(r[10]||"")),atualizadoEm:r[11]||"",
+      // O lançamento original vai junto para a linha poder ser reescrita mesmo
+      // quando a transação não estiver mais carregada — base reconstruída,
+      // perfil que não é o de quem está logado, mês fora do recorte.
+      ctx:[r[2]||"",r[3]||"",r[4]||"",r[5]||"",r[6]||"",r[8]||""]};
+  });
+  return mapa;
+}
+function overridesParaLinhas(mapa){
+  const base=lancamentoPorChave();
+  return Object.keys(mapa).sort().map(k=>{
+    const o=mapa[k],b=base[k]||{},ctx=o.ctx||[],corte=k.indexOf(":");
+    const valor=b.debito!==undefined?(b.debito||0)+(b.credito||0)
+              :b.valor!==undefined?b.valor:undefined;
+    return[k.slice(0,corte),k.slice(corte+1),
+      b.data||ctx[0]||"",b.banco||b.cartao||ctx[1]||"",b.produto||ctx[2]||"",
+      valor!==undefined?valor.toFixed(2).replace(".",","):(ctx[3]||""),
+      b.descOriginal||b.desc||ctx[4]||"",o.desc||"",
+      b.cat||ctx[5]||"",o.cat||"",
+      o.fixo?"fixo":"nao fixo",o.atualizadoEm||""];
+  });
+}
+
+async function garantirAbaOverrides(){
+  if(abaOverridesOk)return;
+  const meta=await chamadaSheets("?fields=sheets.properties.title");
+  const existe=(meta.sheets||[]).some(s=>s.properties&&s.properties.title===ABA_OVERRIDES);
+  if(!existe){
+    await chamadaSheets(":batchUpdate",{method:"POST",
+      body:JSON.stringify({requests:[{addSheet:{properties:{title:ABA_OVERRIDES}}}]})});
+  }
+  await sheetsPut(`${ABA_OVERRIDES}!A1:L1`,[COLS_OVERRIDES]);
+  abaOverridesOk=true;
+}
+
+// Reescreve o bloco inteiro em vez de mexer numa linha só: com dezenas de
+// linhas o custo é o mesmo e não há índice de linha para manter em dia.
+// O bloco é preenchido com linhas vazias até o tamanho anterior, senão o que
+// foi removido continuaria na planilha depois da última linha escrita.
+async function escreverOverrides(mapa,minLinhas){
+  const linhas=overridesParaLinhas(mapa);
+  const alvo=Math.max(linhas.length,minLinhas||0,1);
+  while(linhas.length<alvo)linhas.push(COLS_OVERRIDES.map(()=>""));
+  await sheetsPut(`${ABA_OVERRIDES}!A2:L${1+alvo}`,linhas);
+}
+
+async function sincronizarOverrides(){
+  // Na prévia local não há planilha: a fila é absorvida na memória para o
+  // fluxo de edição continuar testável sem login e sem publicar dado bancário.
+  if(window.__HARNESS_DATA__){
+    const p=getPendentes();
+    Object.keys(p).forEach(k=>{
+      if(p[k].removido)delete overridesRemotos[k];else overridesRemotos[k]=p[k];
+    });
+    setPendentes({});
+    overridesSync={estado:"previa",erro:""};
+    atualizarBotaoEdicoes();
+    return;
+  }
+  if(!accessToken||!Object.keys(getPendentes()).length)return;
+  // Uma sincronização de cada vez. Cliques seguidos na tabela viram uma
+  // segunda rodada no fim, não duas escritas concorrentes no mesmo bloco.
+  if(sincronizando){ressincronizar=true;return;}
+  sincronizando=true;
+  overridesSync={estado:"enviando",erro:""};
+  atualizarBotaoEdicoes();
+  try{
+    await garantirAbaOverrides();
+    // Relê antes de escrever: a outra pessoa pode ter editado no intervalo.
+    // O desempate é por chave e pela hora da edição, não pelo bloco todo —
+    // assim os dois editando ao mesmo tempo não se apagam.
+    const linhas=await sheetsGet(RANGE_OVERRIDES);
+    const remoto=linhasParaOverrides(linhas);
+    const pend=getPendentes();
+    Object.keys(pend).forEach(k=>{
+      const atual=remoto[k],novo=pend[k];
+      if(atual&&atual.atualizadoEm&&String(novo.atualizadoEm)<String(atual.atualizadoEm))return;
+      if(novo.removido)delete remoto[k];else remoto[k]={...novo,ctx:(atual||{}).ctx};
+    });
+    await escreverOverrides(remoto,Math.max(linhas.length,linhasRemotas));
+    overridesRemotos=remoto;
+    linhasRemotas=Object.keys(remoto).length;
+    setPendentes({});
+    overridesSync={estado:"sincronizado",erro:""};
+  }catch(erro){
+    overridesSync={estado:"erro",erro:String((erro&&erro.message)||erro)};
+  }finally{
+    sincronizando=false;
+    atualizarBotaoEdicoes();
+    if(ressincronizar){ressincronizar=false;sincronizarOverrides();}
+  }
+}
+function applyOverride(r){
+  const ov=getOverrides()[chaveOverride(r.id)];
+  if(!ov)return r;
+  let tipo=r.tipo;
+  // "Fixo?" é uma decisão aplicável a débitos da conta. No cartão, uma
+  // assinatura ou parcela continua sendo assinatura/parcela mesmo quando a
+  // categoria é editada pela tabela.
+  if(r.produto==="conta"&&typeof ov.fixo==="boolean"){
+    if(ov.fixo)tipo="Fixo";
+    else if(["Fixo","Casa","Assinatura"].includes(tipo))tipo="Variável";
+  }
+  return{...r,desc:ov.desc||r.desc,cat:ov.cat||r.cat,fixo:!!ov.fixo,tipo};
+}
+function applyOverrideMov(r){
+  const ov=getOverrides()[chaveOverride(r.id)];
+  return ov?{...r,desc:ov.desc||r.desc,cat:ov.cat||r.cat,fixo:!!ov.fixo}:r;
+}
+function movimentoEditadoComoGasto(r){
+  const ov=getOverrides()[chaveOverride(r.id)];
+  if(!ov||r.direcao!=="Débito")return null;
+  if(["Transferências","Pagamento de fatura","Investimentos","Entradas"].includes(ov.cat))return null;
+  const d=applyOverrideMov(r);
+  return{id:r.id,data:r.data,desc:d.desc,cat:d.cat,valor:r.debito,
+    tipo:d.fixo?"Fixo":"Variável",mes:r.mes,ano:Number(String(r.mes).slice(-4)),
+    cartao:r.banco,produto:r.produto,direcao:"Débito",fixo:d.fixo,
+    parcAtual:1,parcTotal:1,mesFinal:r.mes,origem:r.origem};
+}
+function getDisplayData(){
+  const base=allData.map(applyOverride),ids=new Set(allData.map(r=>r.id));
+  const extras=movimentos.filter(r=>!ids.has(r.id)).map(movimentoEditadoComoGasto).filter(Boolean);
+  return[...base,...extras];
+}
+function getMovimentosDisplay(){return movimentos.map(applyOverrideMov);}
+
+function abrirModalEditar(id){
+  const raw=movimentos.find(r=>r.id===id)||allData.find(r=>r.id===id);
+  if(!raw)return;
+  const atual=raw.debito!==undefined?applyOverrideMov(raw):applyOverride(raw);
+  document.getElementById("edit-id").value=id;
+  document.getElementById("edit-desc").value=atual.desc||atual.descOriginal||"";
+  const catSelect=document.getElementById("edit-cat");
+  const cats=[...new Set([...CATEGORIAS_EDITAVEIS,atual.cat].filter(Boolean))];
+  catSelect.innerHTML=cats.map(c=>`<option value="${esc(c)}"${c===atual.cat?" selected":""}>${esc(c)}</option>`).join("");
+  document.getElementById("edit-fixo").checked=!!atual.fixo;
+  document.getElementById("modal-editar").classList.add("open");
+}
+function salvarEdicao(){
+  const id=document.getElementById("edit-id").value;
+  const raw=movimentos.find(r=>r.id===id)||allData.find(r=>r.id===id);
+  if(!raw)return;
+  const novoDesc=document.getElementById("edit-desc").value.trim()||raw.desc||raw.descOriginal;
+  saveOverride(id,novoDesc,document.getElementById("edit-cat").value,
+    document.getElementById("edit-fixo").checked);
+  fecharModal("modal-editar");
+  renderAll();
+}
+function salvarCategoriaRapida(id,categoria){
+  const raw=movimentos.find(r=>r.id===id);
+  if(!raw)return;
+  const atual=applyOverrideMov(raw);
+  saveOverride(id,atual.desc,categoria,atual.fixo);
+  renderAll();
+}
+function alternarFixo(id){
+  const raw=movimentos.find(r=>r.id===id);
+  if(!raw)return;
+  const atual=applyOverrideMov(raw);
+  saveOverride(id,atual.desc,atual.cat,!atual.fixo);
+  renderAll();
+}
+// ── EXPORTAR EDIÇÕES ──────────────────────────────────────
+// Os overrides já persistem na aba `Overrides`, mas isso os deixa na planilha,
+// não na base. Este botão continua sendo a ponte para o pipeline: baixa o
+// mesmo conteúdo em CSV para o `reclassificar.py` transformar em regra
+// permanente e auditável. Enquanto a regra não existe, a correção vive na
+// planilha; depois que existe, vive na base e a linha pode sair da aba.
+//
+// Exporta os dois perfis de uma vez. Cada linha leva o lançamento original
+// junto, para a regra poder ser escrita sem cruzar nada com a base depois.
+function edicoesPendentes(){return Object.keys(getOverrides()).length;}
+
+// O botão diz duas coisas diferentes: quantas correções existem, e se alguma
+// ainda não chegou na planilha. A segunda importa mais — uma edição que ficou
+// só no navegador não existe para a outra pessoa.
+function atualizarBotaoEdicoes(){
+  const btn=document.getElementById("btn-exportar-edicoes");
+  if(!btn)return;
+  const n=edicoesPendentes(),naFila=Object.keys(getPendentes()).length;
+  btn.textContent=n?`exportar ${n} ediç${n===1?"ão":"ões"}`:"exportar edições";
+  btn.classList.toggle("vazio",!n);
+  const estado=overridesSync.estado;
+  btn.title=estado==="erro"
+    ?`${naFila} ediç${naFila===1?"ão":"ões"} só neste navegador — a planilha recusou: ${overridesSync.erro}`
+    :estado==="enviando"?"salvando na planilha…"
+    :estado==="previa"?"prévia local: as edições não saem daqui"
+    :naFila?`${naFila} ediç${naFila===1?"ão":"ões"} aguardando envio para a planilha`
+    :"salvas na aba Overrides da planilha";
+  btn.classList.toggle("nao-sincronizado",!!naFila&&estado!=="previa");
+}
+
+function lancamentoPorChave(){
+  const mapa={};
+  Object.keys(movimentosPorPerfil).forEach(p=>
+    movimentosPorPerfil[p].forEach(r=>{mapa[`${p}:${r.id}`]=r;}));
+  Object.keys(dadosPorPerfil).forEach(p=>
+    dadosPorPerfil[p].forEach(r=>{if(r.id&&!mapa[`${p}:${r.id}`])mapa[`${p}:${r.id}`]=r;}));
+  return mapa;
+}
+
+function baixarCSV(nome,linhas){
+  const csv=linhas.map(l=>l.map(c=>{
+    const s=String(c??"");
+    return /[",;\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+  }).join(",")).join("\r\n");
+  // BOM: o Excel e o Sheets abrem o acento certo com ele, e sem ele não.
+  const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=nome;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},0);
+}
+
+function exportarEdicoes(){
+  const ov=getOverrides(),chaves=Object.keys(ov).sort();
+  if(!chaves.length){
+    alert("Nenhuma edição ainda. Renomeie, troque a categoria ou marque fixo em alguma transação e o botão passa a ter o que exportar.");
+    return;
+  }
+  const original=lancamentoPorChave();
+  const cabecalho=["perfil","id","data","banco","produto","valor",
+    "desc_original","desc_novo","cat_original","cat_nova","fixo","editado_em"];
+  const linhas=chaves.map(k=>{
+    const o=ov[k],b=original[k]||{},corte=k.indexOf(":");
+    const valor=b.debito!==undefined?(b.debito||0)+(b.credito||0):(b.valor||0);
+    return[k.slice(0,corte),k.slice(corte+1),b.data||"",b.banco||b.cartao||"",
+      b.produto||"",valor.toFixed(2).replace(".",","),
+      b.descOriginal||b.desc||"",o.desc||"",b.cat||"",o.cat||"",
+      typeof o.fixo==="boolean"?(o.fixo?"fixo":"nao fixo"):"",o.atualizadoEm||""];
+  });
+  const hoje=new Date().toISOString().slice(0,10);
+  baixarCSV(`edicoes-painel-${hoje}.csv`,[cabecalho,...linhas]);
+}
+
+function filtrarDirecao(direcao,botao){
+  direcaoFiltro=direcao;
+  document.querySelectorAll("#tab-transacoes .filter-btn").forEach(b=>b.classList.toggle("active",b===botao));
+  renderTransacoes();
+}
+function ordemDataBR(data){
+  const[d,m,y]=String(data||"").split("/").map(Number);
+  return(y||0)*10000+(m||0)*100+(d||0);
+}
+
+function renderSaldos(txs){
+  const conhecidos=saldosPorPerfil[perfil]||[];
+  const chaves=new Map();
+  txs.filter(r=>r.produto==="conta").forEach(r=>chaves.set(`${r.banco}|${r.produto}`,{banco:r.banco,produto:r.produto}));
+  conhecidos.forEach(r=>chaves.set(`${r.banco}|${r.produto}`,r));
+  const cards=[...chaves.values()].sort((a,b)=>a.banco.localeCompare(b.banco)).map(conta=>{
+    const itens=txs.filter(r=>r.banco===conta.banco&&r.produto===conta.produto);
+    const creditos=itens.reduce((s,r)=>s+r.credito,0),debitos=itens.reduce((s,r)=>s+r.debito,0);
+    const saldo=conhecidos.find(r=>r.banco===conta.banco&&r.produto===conta.produto);
+    return`<div class="saldo-card${saldo?" disponivel":""}">
+      <div class="saldo-conta">${esc(conta.banco)} · ${esc(conta.produto)} · ${saldo?"observado":"sem saldo"}</div>
+      <div class="saldo-valor${saldo?"":" indisponivel"}">${saldo?fmtCentavos(saldo.saldo):"—"}</div>
+      <div class="saldo-fluxo"><span class="credito">+${fmt(creditos)}</span><span class="debito">−${fmt(debitos)}</span></div>
+      <div class="saldo-fonte">${saldo?`atualizado em ${esc(saldo.atualizadoEm)}`:"a fonte ainda não informa o saldo"}</div>
+    </div>`;
+  });
+  document.getElementById("saldo-grid").innerHTML=cards.join("")||
+    `<div class="saldo-card"><div class="saldo-valor">—</div><div class="saldo-fonte">nenhuma conta encontrada neste perfil</div></div>`;
+}
+
+function renderTransacoes(){
+  // Busca sem acento dos dois lados: os nomes amigaveis tem acento ("Óculos")
+  // e ninguem digita acento numa caixa de busca.
+  const ms=mesStr(mesAtual.m,mesAtual.y),busca=semAcento(document.getElementById("trans-search")?.value||"");
+  const banco=cartaoFil();
+  // Por fatura, a lista mostra tudo que o banco cobra naquele vencimento —
+  // inclusive compras de competência anterior. É o recorte do extrato do app.
+  const todas=getMovimentosDisplay().filter(r=>
+    periodoFiltro==="fatura" ? r.fatura===ms : r.mes===ms);
+  document.getElementById("trans-alert-area").innerHTML=ledgerIncompletoPorPerfil[perfil]
+    ? `<div class="partial-alert"><span>🟠</span><span><strong>Movimentações incompletas:</strong> a aba Movimentações não respondeu. Esta lista mostra apenas o feed econômico e pode omitir créditos e transferências.</span></div>`
+    : "";
+  renderSaldos(todas);
+  const txs=todas.filter(r=>(!banco||r.banco===banco)&&(!direcaoFiltro||r.direcao===direcaoFiltro)&&
+    (!busca||[r.desc,r.descOriginal,r.cat,r.banco,r.produto].some(v=>semAcento(v).includes(busca))))
+    .sort((a,b)=>ordemDataBR(b.data)-ordemDataBR(a.data)||b.debito+b.credito-(a.debito+a.credito));
+  const debitos=txs.reduce((s,r)=>s+r.debito,0),creditos=txs.reduce((s,r)=>s+r.credito,0);
+  const rotulo=periodoFiltro==="fatura"?`fatura ${ms}`:`competência ${ms}`;
+  document.getElementById("trans-resumo").textContent=
+    `${rotulo} · ${txs.length} transações · +${fmtCentavos(creditos)} · −${fmtCentavos(debitos)}`;
+  const titulo=document.getElementById("trans-titulo");
+  if(titulo)titulo.textContent=periodoFiltro==="fatura"
+    ? "o que o banco cobra nesta fatura" : "créditos e débitos do mês";
+  document.getElementById("trans-body").innerHTML=txs.length?txs.map(r=>{
+    const cats=[...new Set([...CATEGORIAS_EDITAVEIS,r.cat].filter(Boolean))];
+    const seletor=`<select class="inline-select" data-acao="categoria" data-id="${esc(r.id)}">${cats.map(c=>`<option value="${esc(c)}"${c===r.cat?" selected":""}>${esc(c)}</option>`).join("")}</select>`;
+    const podeFixar=r.direcao==="Débito"&&r.produto==="conta";
+    return`<tr>
+      <td class="trans-data">${esc(r.data||"—")}</td>
+      <td><div class="trans-desc"><strong>${esc(r.desc)}</strong>${r.descOriginal&&r.descOriginal!==r.desc?`<small>original: ${esc(r.descOriginal)}</small>`:""}</div></td>
+      <td>${seletor}</td>
+      <td>${podeFixar?`<button class="fixed-toggle${r.fixo?" on":""}" data-acao="fixo" data-id="${esc(r.id)}">${r.fixo?"fixo":"não fixo"}</button>`:"—"}</td>
+      <td><div>${esc(r.banco)}</div><div class="trans-produto">${esc(r.produto)}</div></td>
+      <td class="valor-credito">${r.credito?"+"+fmtCentavos(r.credito):"—"}</td>
+      <td class="valor-debito">${r.debito?"−"+fmtCentavos(r.debito):"—"}</td>
+      <td><button class="edit-mini" data-acao="editar" data-id="${esc(r.id)}">editar</button></td>
+    </tr>`;
+  }).join(""):`<tr><td colspan="8" style="color:var(--muted);padding:20px 0">Nenhuma transação neste filtro</td></tr>`;
+  const corpo=document.getElementById("trans-body");
+  corpo.querySelectorAll('[data-acao="categoria"]').forEach(el=>el.addEventListener("change",()=>salvarCategoriaRapida(el.dataset.id,el.value)));
+  corpo.querySelectorAll('[data-acao="fixo"]').forEach(el=>el.addEventListener("click",()=>alternarFixo(el.dataset.id)));
+  corpo.querySelectorAll('[data-acao="editar"]').forEach(el=>el.addEventListener("click",()=>abrirModalEditar(el.dataset.id)));
+  atualizarBotaoEdicoes();
+  document.getElementById("trans-loading").style.display="none";
+  document.getElementById("trans-content").style.display="block";
+}
+
+// ── PROJEÇÃO ──────────────────────────────────────────────
+// DEDUPLICAÇÃO: para cada parcela única, usa o valor mensal (não soma todas as ocorrências históricas)
+const ordemMes=s=>{const[m,y]=String(s||"").split("/").map(Number);return(y||0)*12+(m||0);};
+
+function getParcUnicas(){
+  const map={};
+  getDisplayData().filter(r=>r.tipo==="Parcela"&&r.mesFinal&&r.mesFinal!=="—"&&r.mesFinal!=="Recorrente").forEach(r=>{
+    const key=chaveParcela(r);
+    // Mantém a ocorrência mais recente. Comparar "12/2026" com "01/2027" como
+    // texto dá a resposta errada; por isso ordena por (ano*12+mês).
+    if(!map[key]||ordemMes(r.mes)>ordemMes(map[key].mes))map[key]=r;
+  });
+  return Object.values(map);
+}
+
+// Os números de um mês futuro. Existe uma função só porque a aba "projeção" e o
+// resumo da tela principal mostram o mesmo mês: se cada uma calculasse por
+// conta, uma hora divergiriam e o painel passaria a se contradizer.
+function projecaoDoMes(i,parcUnicas){
+  let m=mesAtual.m+i,y=mesAtual.y;
+  while(m>12){m-=12;y++;}
+  const str=mesStr(m,y);
+
+  // Compromissos declarados na Config. "Casa" é moradia, o resto vira Fixo —
+  // a projeção não tenta adivinhar assinatura vs conta.
+  const totalCasa=compromissos.filter(c=>c.cat==="Casa")
+    .reduce((s,c)=>s+compromissoNoPainel(c),0);
+  const totalFixoP=compromissos.filter(c=>c.cat!=="Casa")
+    .reduce((s,c)=>s+compromissoNoPainel(c),0);
+  const totalCompartilhado=compromissos.filter(c=>c.casal)
+    .reduce((s,c)=>s+compromissoNoPainel(c),0);
+  // O que sobra para quem está sendo visto: o que é dele inteiro, mais o
+  // rateio do que é do casal.
+  const meuRateio=meuRateioAtual();
+  const suaParteFixos=compromissos.reduce((s,c)=>s+compromissoMeu(c),0);
+
+  const parcelas=parcUnicas.filter(r=>{
+    const[mf,yf]=r.mesFinal.split("/").map(Number);
+    return(y*12+m)<=(yf*12+mf);
+  });
+  const totalParc=parcelas.reduce((s,r)=>s+r.valor,0);
+  const totalParcProprio=parcelas.reduce((s,r)=>s+r.valor*(1-pctDoOutroNaParcela(r)),0);
+
+  // Parcelas que TERMINAM exatamente nesse mês — é o que libera orçamento.
+  const terminamMap={};
+  parcUnicas.filter(r=>r.mesFinal===str).forEach(r=>{
+    const d=applyOverride(r);
+    terminamMap[d.desc]=(terminamMap[d.desc]||0)+r.valor;
+  });
+  const valorLiberado=Object.values(terminamMap).reduce((s,v)=>s+v,0);
+
+  return{m,y,str,totalCasa,totalFixoP,totalParc,parcelas,terminamMap,valorLiberado,
+    totalCompartilhado,meuRateio,total:totalCasa+totalFixoP+totalParc,
+    suaParte:suaParteFixos+totalParcProprio};
+}
+
+function renderizarProjecao(){
+  const parcUnicas=getParcUnicas();
+  const cards=[];
+  for(let i=1;i<=MESES_PROJETADOS;i++){
+    const{m,y,str,totalCasa,totalFixoP,totalParc,parcelas,terminamMap,
+      valorLiberado,total,suaParte,meuRateio}=projecaoDoMes(i,parcUnicas);
+    const totalBruto=total,casaLiq=totalCasa,totalAssin=0;
+
+    // Barras empilhadas — % do total
+    const segCasa=total>0?totalCasa/total*100:0;
+    const segFixo=total>0?totalFixoP/total*100:0;
+    const segAssin=0;
+    const segParc=total>0?totalParc/total*100:0;
+
+    const topParc=Object.entries(
+      parcelas.reduce((acc,r)=>{acc[r.desc]=(acc[r.desc]||0)+r.valor;return acc;},{})
+    ).sort((a,b)=>b[1]-a[1]).slice(0,3);
+
+    const terminamHTML=Object.entries(terminamMap).length>0?`
+      <div class="proj-termina">
+        <div class="proj-termina-title">✅ terminam neste mês</div>
+        ${Object.entries(terminamMap).map(([d,v])=>`<div class="proj-item"><span class="proj-item-label">${d.substring(0,22)}</span><span class="proj-item-val" style="color:var(--green)">${fmt(v)}</span></div>`).join("")}
+        <div class="proj-liberado"><span>→ libera por mês</span><span>+${fmt(valorLiberado)}</span></div>
+      </div>`:"";
+
+    cards.push(`<div class="proj-card">
+      <div class="proj-month">${labelMes(m,y).toUpperCase()}</div>
+      <div class="proj-totals">
+        ${!isLiq()?"":`<div class="proj-total-bruto">${fmt(totalBruto)} bruto</div>`}
+        <div class="proj-total-liq ${total<RENDA_PISO?'ok':''}">${fmt(total)}</div>
+      </div>
+      <div class="stack-bars">
+        <div class="stack-seg" style="width:${segCasa}%;background:var(--blue)"></div>
+        <div class="stack-seg" style="width:${segFixo}%;background:var(--purple)"></div>
+        <div class="stack-seg" style="width:${segAssin}%;background:var(--accent)"></div>
+        <div class="stack-seg" style="width:${segParc}%;background:var(--amber)"></div>
+      </div>
+      <div class="stack-legend">
+        <div class="stack-leg-item"><div class="stack-dot" style="background:var(--blue)"></div>casa ${fmt(isLiq()?casaLiq:totalCasa)}</div>
+        <div class="stack-leg-item"><div class="stack-dot" style="background:var(--purple)"></div>fixos ${fmt(totalFixoP)}</div>
+        <div class="stack-leg-item"><div class="stack-dot" style="background:var(--amber)"></div>parcelas ${fmt(totalParc)}</div>
+      </div>
+      ${SPLIT_LUCAS&&Math.abs(total-suaParte)>0.5?`<div class="proj-rateio">
+        <span>sua parte, com rateio de ${(meuRateio*100).toFixed(2).replace(".",",")}%</span>
+        <strong>${fmt(suaParte)}</strong>
+      </div>`:""}
+      ${topParc.map(([d,v])=>`<div class="proj-item"><span class="proj-item-label">${d.substring(0,22)}</span><span class="proj-item-val">${fmt(v)}</span></div>`).join("")}
+      ${terminamHTML}
+    </div>`);
+  }
+  document.getElementById("proj-grid").innerHTML=cards.join("");
+  document.getElementById("proj-loading").style.display="none";
+  document.getElementById("proj-content").style.display="block";
+}
+
+// ── CASAL ─────────────────────────────────────────────────
+// Os dois lados usam a mesma régua: total saindo, reembolsos e líquido do mês
+// selecionado. Meses parciais são marcados por pessoa, porque a cobertura das
+// fontes difere — o Safra da Julia só começa em 19/05/2026.
+function resumoPessoa(dados,m,y){
+  const txs=dados.filter(r=>r.mes===mesStr(m,y));
+  const total=txs.filter(r=>r.tipo!=="Reembolso").reduce((s,r)=>s+r.valor,0);
+  const reemb=txs.filter(r=>r.tipo==="Reembolso").reduce((s,r)=>s+r.valor,0);
+  return{total,reemb,liquido:total-reemb,n:txs.length};
+}
+
+function cardPessoa(res,parcial){
+  return`<div style="display:flex;flex-direction:column;gap:14px">
+    ${parcial?'<div class="casal-aviso">mês parcial — não comparar com mês fechado</div>':""}
+    <div><div class="kpi-label">total saindo</div><div class="kpi-value red" style="font-size:20px">${fmt(res.total)}</div></div>
+    <div><div class="kpi-label">reembolsos</div><div class="kpi-value green" style="font-size:20px">+${fmt(res.reemb)}</div></div>
+    <div><div class="kpi-label">líquido</div><div class="kpi-value" style="font-size:20px">${fmt(res.liquido)}</div></div>
+  </div>`;
+}
+
+// O acerto do casal usa somente lançamentos explicitamente criados como
+// "A receber". Estornos do banco e reembolsos de corridas não são dívidas
+// entre Lucas e Julia e, portanto, não podem reduzir nem aumentar o líquido.
+function aReceberDoCasal(dados,m,y){
+  const ms=mesStr(m,y);
+  return dados.filter(r=>r.mes===ms&&r.tipo==="Reembolso"&&
+    /^a receber\b/i.test(String(r.desc||"").trim()))
+    .reduce((s,r)=>s+r.valor,0);
+}
+
+function cardAcertoCasal(lucasRecebe,juliaRecebe,ms){
+  const saldo=lucasRecebe-juliaRecebe;
+  const direcao=saldo>0.005?"Julia paga Lucas":saldo<-.005?"Lucas paga Julia":"ninguém transfere";
+  const cor=saldo>0.005?"var(--accent2)":saldo<-.005?"var(--amber)":"var(--muted)";
+  return`<div class="casal-acerto">
+    <div class="casal-total-linha"><span>acerto do casal em ${ms}</span><strong style="color:${cor}">${fmtCentavos(saldo)}</strong></div>
+    <div class="casal-acerto-grid">
+      <div class="casal-acerto-item"><div class="casal-acerto-label">Julia deve ao Lucas</div><div class="casal-acerto-valor" style="color:var(--accent2)">${fmtCentavos(lucasRecebe)}</div><div class="casal-acerto-direcao">itens “A receber” no cartão dele</div></div>
+      <div class="casal-acerto-item"><div class="casal-acerto-label">Lucas deve à Julia</div><div class="casal-acerto-valor" style="color:var(--amber)">${fmtCentavos(juliaRecebe)}</div><div class="casal-acerto-direcao">itens “A receber” no cartão dela</div></div>
+      <div class="casal-acerto-item"><div class="casal-acerto-label">saldo líquido</div><div class="casal-acerto-valor" style="color:${cor}">${fmtCentavos(saldo)}</div><div class="casal-acerto-direcao">${direcao} · estornos bancários ficam fora</div></div>
+    </div>
+  </div>`;
+}
+
+function renderizarCasal(){
+  const ms=mesStr(mesAtual.m,mesAtual.y);
+  // Esta aba não segue o perfil ativo: ela existe para comparar os dois lados,
+  // então lê sempre Lucas de um lado e Julia do outro.
+  const lucas=resumoPessoa(dadosPorPerfil.Lucas,mesAtual.m,mesAtual.y);
+  const julia=resumoPessoa(dadosPorPerfil.Julia,mesAtual.m,mesAtual.y);
+  const parcialL=PERFIS.Lucas.mesesParciais.includes(ms);
+  const parcialJ=PERFIS.Julia.mesesParciais.includes(ms);
+
+  const elL=document.getElementById("casal-lucas-content");
+  elL.innerHTML=cardPessoa(lucas,parcialL);
+  elL.className="";
+
+  const elJ=document.getElementById("casal-julia-content");
+  elJ.className="";
+  elJ.innerHTML=dadosPorPerfil.Julia.length
+    ? cardPessoa(julia,parcialJ)
+    : `<div class="coming-soon"><span>sem dados</span><span style="font-size:11px">aba "Transações Julia" vazia ou sem acesso</span></div>`;
+
+  const lucasRecebe=aReceberDoCasal(dadosPorPerfil.Lucas,mesAtual.m,mesAtual.y);
+  const juliaRecebe=aReceberDoCasal(dadosPorPerfil.Julia,mesAtual.m,mesAtual.y);
+  const elA=document.getElementById("casal-acerto");
+  elA.innerHTML=cardAcertoCasal(lucasRecebe,juliaRecebe,ms);
+
+  const elT=document.getElementById("casal-total");
+  const temJulia=dadosPorPerfil.Julia.length;
+  elT.className=temJulia?"casal-total":"";
+  elT.innerHTML=temJulia?`
+    <div class="casal-total-linha"><span>líquido do casal em ${ms}</span><strong>${fmt(lucas.liquido+julia.liquido)}</strong></div>
+    <div class="casal-total-sub">${fmt(lucas.liquido)} Lucas + ${fmt(julia.liquido)} Julia${parcialL||parcialJ?" · inclui mês parcial, o total real é maior":""}</div>
+  `:"";
+}
+
+// ── TABS & NAV ────────────────────────────────────────────
+function setTab(id,el){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".tab-content").forEach(t=>t.classList.remove("active"));
+  el.classList.add("active");
+  document.getElementById("tab-"+id).classList.add("active");
+}
+function navMes(dir){
+  mesAtual.m+=dir;
+  if(mesAtual.m>12){mesAtual.m=1;mesAtual.y++;}
+  if(mesAtual.m<1){mesAtual.m=12;mesAtual.y--;}
+  document.getElementById("month-label").textContent=mesStr(mesAtual.m,mesAtual.y);
+  if(allData.length)renderAll();
+}
+
+// ── MODALS ────────────────────────────────────────────────
+function abrirModalFatura(){document.getElementById("modal-fatura").classList.add("open");}
+function abrirModalRachar(){document.getElementById("modal-rachar").classList.add("open");atualizarPreviewRachar();}
+function fecharModal(id){document.getElementById(id).classList.remove("open");}
+
+function registrarFatura(){
+  const cartao=document.getElementById("fatura-cartao").value;
+  const mes=document.getElementById("fatura-mes").value;
+  const valor=document.getElementById("fatura-valor").value;
+  alert(`📋 Para registrar: adicione as linhas detalhadas da fatura de ${cartao} (${mes} — R$${valor}) na aba Transações do Sheets. O agente no Telegram pode ajudar a categorizar cada item.`);
+  fecharModal("modal-fatura");
+}
+
+function atualizarPreviewRachar(){
+  const val=parseFloat((document.getElementById("rachar-valor").value||"0").replace(",","."));
+  const split=parseFloat(document.getElementById("rachar-split").value);
+  const lucasPct=split/100;
+  const juliaPct=1-lucasPct;
+  const lucasVal=val*lucasPct;
+  const juliaVal=val*juliaPct;
+  document.getElementById("rachar-preview").innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div><div style="color:var(--accent);margin-bottom:4px">Lucas (${split}%)</div><div style="font-size:16px">${fmt(lucasVal)}</div></div>
+      <div><div style="color:var(--accent2);margin-bottom:4px">Julia (${(juliaPct*100).toFixed(1)}%)</div><div style="font-size:16px">${fmt(juliaVal)}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">reembolso a receber</div></div>
+    </div>`;
+}
+document.addEventListener("DOMContentLoaded",()=>{
+  document.getElementById("rachar-valor")?.addEventListener("input",atualizarPreviewRachar);
+  document.getElementById("rachar-split")?.addEventListener("change",atualizarPreviewRachar);
+  if(window.__HARNESS_DATA__){
+    document.getElementById("login-screen").style.display="none";
+    document.getElementById("app").style.display="block";
+    document.getElementById("perfil-conta").textContent="prévia local com dados processados";
+    document.getElementById("toggle-label").textContent="líquido";
+    carregarTudo().catch(err=>{
+      console.error(err);
+      document.getElementById("mes-loading").innerHTML=`erro ao carregar prévia: ${esc(err.message)}`;
+    });
+  }
+});
+
+function confirmarRachar(){
+  const desc=document.getElementById("rachar-desc").value;
+  const val=parseFloat((document.getElementById("rachar-valor").value||"0").replace(",","."));
+  const cat=document.getElementById("rachar-cat").value;
+  const split=parseFloat(document.getElementById("rachar-split").value);
+  const juliaVal=(val*(1-split/100)).toFixed(2);
+  alert(`✅ Adicione no Sheets:\n\n1. ${desc} — ${cat} — R$${val} (Variável)\n2. Reembolso Julia (${desc}) — Reembolso — R$${juliaVal} (Reembolso)\n\nOu mande no Telegram: "rachar ${desc} R$${val} com Julia"`);
+  fecharModal("modal-rachar");
+}
+
+// Fechar modal e menu de perfil ao clicar fora
+document.addEventListener("click",e=>{
+  if(e.target.classList.contains("modal-overlay"))e.target.classList.remove("open");
+  if(!e.target.closest("#perfil-chip"))fecharMenuPerfil();
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")fecharMenuPerfil();});
+</script>
+</body>
+</html>
