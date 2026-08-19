@@ -748,8 +748,17 @@ const PERFIS={
     orcamento:"Config!F15:G28",compromissos:"Config!F33:I45",
     avisoParcial:"a fatura do Safra ainda não fechou. As compras do mês vêm da exportação de 90 dias, e as parcelas foram projetadas da fatura anterior — uma parcela que não terminou na última está na próxima. O valor pode mudar quando a fatura sair."},
 };
-let perfil=localStorage.getItem("perfil");
+// `null` quando a pessoa nunca escolheu — e a diferença importa: sem escolha
+// própria, quem manda é a conta que entrou.
+const perfilEscolhido=localStorage.getItem("perfil");
+let perfil=perfilEscolhido;
 if(!PERFIS[perfil])perfil="Lucas";
+let emailConectado="";
+// Qual conta do Google corresponde a qual perfil. Mora na Config e não aqui
+// porque e-mail é dado pessoal e este arquivo é servido publicamente.
+// Colunas: perfil, e-mail.
+const RANGE_CONTAS="Config!B86:C88";
+let contasPorEmail={};
 const dadosPorPerfil={Lucas:[],Julia:[]};
 const movimentosPorPerfil={Lucas:[],Julia:[]};
 const saldosPorPerfil={Lucas:[],Julia:[]};
@@ -801,11 +810,16 @@ function iniciarLogin(){
   s.src="https://accounts.google.com/gsi/client";
   s.onload=()=>{
     tokenClient=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,callback:async r=>{
-      if(r.error)return;
+      // Falha de autorização precisa aparecer. Voltar em silêncio aqui fazia
+      // o botão "Entrar com Google" parecer quebrado: a pessoa clicava, a
+      // tela não mudava, e não havia nada escrito para ela repetir a quem
+      // pudesse ajudar.
+      if(r.error){mostrarFalhaDeAutorizacao(r);return;}
       accessToken=r.access_token;
       const u=await fetch("https://www.googleapis.com/oauth2/v3/userinfo",{headers:{Authorization:"Bearer "+accessToken}}).then(r=>r.json());
       // Quem entrou não é o mesmo que o painel está mostrando: a conta do
       // Google fica no menu, e o chip mostra o perfil selecionado.
+      emailConectado=String(u.email||"").trim().toLowerCase();
       document.getElementById("perfil-conta").textContent="conectado como "+(u.email||u.given_name||u.name||"—");
       document.getElementById("login-screen").style.display="none";
       document.getElementById("app").style.display="block";
@@ -820,6 +834,28 @@ function iniciarLogin(){
   };
   document.head.appendChild(s);
 }
+// A autorização do Google falhou — a pessoa nem chegou a ter token. Os
+// motivos são poucos e cada um tem uma saída diferente, então vale nomear em
+// vez de mostrar o código cru que o Google devolve.
+function mostrarFalhaDeAutorizacao(r){
+  const cod=String((r&&(r.error||r.type))||"desconhecido");
+  const explicacao=
+    cod==="access_denied"
+      ? `A conta usada não está autorizada neste app, ou a permissão foi
+         recusada. O app está em modo de teste: só as contas cadastradas como
+         testadoras conseguem entrar.`
+    : cod==="popup_closed"||cod==="popup_closed_by_user"
+      ? `A janela do Google foi fechada antes de concluir. Clique de novo e
+         termine o login na janela que abrir.`
+    : cod==="popup_failed_to_open"
+      ? `O navegador bloqueou a janela do Google. Libere pop-ups para este
+         site e tente de novo.`
+    : `O Google recusou a autorização (<code>${esc(cod)}</code>).`;
+  const caixa=document.getElementById("login-erro");
+  caixa.innerHTML=`<strong>Não deu para entrar.</strong> ${explicacao}`;
+  caixa.classList.add("visivel");
+}
+
 // Volta para a tela de entrada com o motivo escrito. Um painel zerado faz a
 // pessoa achar que o problema é o dado; a causa quase sempre é permissão, e
 // ela não tem como adivinhar isso sozinha.
@@ -930,7 +966,7 @@ function movimentosDeDados(dados){
 
 async function carregarTudo(){
   // A aba da Julia pode não existir ainda; o catch evita derrubar o painel todo.
-  const[txRows,juliaRows,splitRows,cfgL,compL,cfgJ,compJ,movL,movJ,saldos,ovRows,reembRows,pcRows,propRows,invRows,idxRows]=await Promise.all([
+  const[txRows,juliaRows,splitRows,cfgL,compL,cfgJ,compJ,movL,movJ,saldos,ovRows,reembRows,pcRows,propRows,invRows,idxRows,contaRows]=await Promise.all([
     fetchSheet("Transações!A5:P1000"),
     fetchSheet("'Transações Julia'!A5:P1000").catch(()=>[]),
     fetchSheet("Config!C9").catch(()=>[]),
@@ -947,6 +983,7 @@ async function carregarTudo(){
     fetchSheet(RANGE_PROPOSTAS).catch(()=>[]),
     fetchSheet(RANGE_INVEST).catch(()=>[]),
     fetchSheet(RANGE_INDICES).catch(()=>[]),
+    fetchSheet(RANGE_CONTAS).catch(()=>[]),
   ]);
   dadosPorPerfil.Lucas=txRows.filter(r=>r[0]).map(parseLinha);
   dadosPorPerfil.Julia=juliaRows.filter(r=>r[0]).map(parseLinha);
@@ -980,6 +1017,19 @@ async function carregarTudo(){
   reembEsperados=reembRows.map(r=>String((r||[])[0]||"").trim().toLowerCase()).filter(Boolean);
   lerConfig("Lucas",cfgL,compL);
   lerConfig("Julia",cfgJ,compJ);
+
+  // Sem escolha própria guardada, o painel abre no perfil de quem entrou. A
+  // Julia caía no painel do Lucas no primeiro acesso e precisava descobrir
+  // sozinha o chip de troca — parecia dado errado, não configuração.
+  contasPorEmail={};
+  (contaRows||[]).forEach(r=>{
+    const p=String((r||[])[0]||"").trim();
+    const e=String(r[1]||"").trim().toLowerCase();
+    if(p&&e&&PERFIS[p])contasPorEmail[e]=p;
+  });
+  if(!perfilEscolhido&&contasPorEmail[emailConectado]){
+    perfil=contasPorEmail[emailConectado];
+  }
   aplicarPerfil();
   // O que estiver pendente no `localStorage` sobe agora. É por aqui que as
   // edições feitas antes desta versão — as 11 dele de 18/08 — migram para a
