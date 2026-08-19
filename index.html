@@ -333,6 +333,7 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
 .inv-liq{color:var(--accent2);}
 .inv-tag{font-family:var(--mono);font-size:9px;color:var(--muted);border:1px solid var(--border2);
   border-radius:4px;padding:1px 5px;vertical-align:middle;}
+.inv-velho{color:var(--amber);border-color:rgba(240,168,74,0.4);}
 
 /* Tabela protagonista: tudo de uma posição numa linha só. Rola de lado no
    celular em vez de espremer coluna até virar reticência. */
@@ -979,7 +980,7 @@ function movimentosDeDados(dados){
 
 async function carregarTudo(){
   // A aba da Julia pode não existir ainda; o catch evita derrubar o painel todo.
-  const[txRows,juliaRows,splitRows,cfgL,compL,cfgJ,compJ,movL,movJ,saldos,ovRows,reembRows,pcRows,invRows,idxRows,contaRows]=await Promise.all([
+  const[txRows,juliaRows,splitRows,cfgL,compL,cfgJ,compJ,movL,movJ,saldos,ovRows,reembRows,pcRows,invRows,idxRows,contaRows,cotRows]=await Promise.all([
     fetchSheet("Transações!A5:P1000"),
     fetchSheet("'Transações Julia'!A5:P1000").catch(()=>[]),
     fetchSheet("Config!C9").catch(()=>[]),
@@ -996,6 +997,7 @@ async function carregarTudo(){
     fetchSheet(RANGE_INVEST).catch(()=>[]),
     fetchSheet(RANGE_INDICES).catch(()=>[]),
     fetchSheet(RANGE_CONTAS).catch(()=>[]),
+    fetchSheet(RANGE_COTACOES).catch(()=>[]),
   ]);
   dadosPorPerfil.Lucas=txRows.filter(r=>r[0]).map(parseLinha);
   dadosPorPerfil.Julia=juliaRows.filter(r=>r[0]).map(parseLinha);
@@ -1016,6 +1018,7 @@ async function carregarTudo(){
   overridesRemotos=linhasParaOverrides(ovRows);
   linhasRemotas=ovRows.length;
   parcelasCasal=lerParcelasCasal(pcRows);
+  cotacoes=lerCotacoes(cotRows);
   investimentos=lerInvestimentos(invRows);
   CDI_AA=taxaNum((idxRows[0]||[])[0]);
   POUP_AM=taxaNum((idxRows[1]||[])[0]);
@@ -1602,7 +1605,17 @@ const RANGE_PARCELAS_CASAL="Config!B63:E80";
 // do CDI" e 12,5 para "12,5% ao ano" prefixado. `valor_manual`, quando
 // preenchido, manda sobre o cálculo — é a saída para renda variável, onde
 // nenhuma fórmula acerta o preço.
-const RANGE_INVEST="Investimentos!A2:K300";
+const RANGE_INVEST="Investimentos!A2:N300";
+// Cotação de ação, FII e ETF. A planilha busca com GOOGLEFINANCE e o painel
+// só lê — sem chave, sem CORS, sem custo. Uma linha por ativo, e não por
+// aporte: três compras do mesmo FII compartilham o mesmo preço.
+//
+// O que muda de verdade aqui é guardar **quantidade** em vez de valor. Cota é
+// estável, preço não. Com quantidade, o valor se atualiza para sempre; com
+// valor digitado, a carteira envelhece parecendo atual — que é o pior estado
+// possível para um número na tela.
+const RANGE_COTACOES="Cotacoes!A2:C60";
+let cotacoes={};
 // Rede de segurança, não fonte principal: CDI ao ano e poupança ao mês para
 // quando as séries do Banco Central não vierem. Sem série e sem isto, o
 // painel mostra o aplicado e diz que não estimou — nunca inventa taxa.
@@ -1694,8 +1707,24 @@ function lerInvestimentos(linhas){
       tributacao:String(r[9]||"").trim().toUpperCase().replace(/\s+/g,"_")||
         TRIB_PADRAO[indexador]||"NENHUM",
       obs:String(r[10]||"").trim(),
+      ticker:String(r[11]||"").trim().toUpperCase(),
+      quantidade:taxaNum(r[12]),
+      atualizadoEm:String(r[13]||"").trim(),
     };
   }).filter(i=>i.produto&&dataOrd(i.data)&&i.aplicado>0);
+}
+
+function lerCotacoes(linhas){
+  const mapa={};
+  (linhas||[]).forEach(r=>{
+    const t=String((r||[])[0]||"").trim().toUpperCase();
+    const p=valorBRL(r[1]);
+    // Célula em erro (#N/A de ticker errado, ou mercado sem dado) vira 0 e é
+    // descartada aqui. Melhor a posição cair para a fonte seguinte do que
+    // multiplicar quantidade por zero e mostrar carteira vazia.
+    if(t&&p>0)mapa[t]={preco:p,nome:String(r[2]||"").trim()};
+  });
+  return mapa;
 }
 
 // Sem perfil e "casal" aparecem para os dois — o mesmo critério que a fila de
@@ -1786,11 +1815,30 @@ function posicaoHoje(inv,hoje){
   const {fator,exato}=fatorRendimento(inv,diaNum(inv.data),diaNum(
     `${String(hoje.getDate()).padStart(2,"0")}/${String(hoje.getMonth()+1).padStart(2,"0")}/${hoje.getFullYear()}`),dias);
 
-  // Valor digitado manda sobre qualquer fórmula: é o preço de mercado, e
-  // nenhum indexador acerta ação, FII ou fundo.
-  const calculado=inv.valorManual>0;
-  const bruto=calculado?inv.valorManual:inv.aplicado*fator;
+  // Três fontes de verdade, nesta ordem. Cada uma envelhece diferente, e a
+  // tela precisa dizer de qual veio: um número de mercado e um digitado há
+  // dois meses não podem ter a mesma aparência.
+  //   1. ticker + quantidade -> cotação da planilha, atualiza sozinho
+  //   2. indexador           -> série do Banco Central, atualiza sozinho
+  //   3. valor digitado      -> congela, e o painel mostra a idade
+  const cot=inv.ticker?cotacoes[inv.ticker]:null;
+  let bruto,fonte;
+  if(cot&&inv.quantidade>0){
+    bruto=cot.preco*inv.quantidade; fonte="mercado";
+  }else if(inv.indexador!=="NENHUM"){
+    bruto=inv.aplicado*fator; fonte="indice";
+  }else if(inv.valorManual>0){
+    bruto=inv.valorManual; fonte="manual";
+  }else{
+    // Sem fonte nenhuma: mostra o aplicado e não finge que rendeu.
+    bruto=inv.aplicado; fonte="sem fonte";
+  }
   const rend=bruto-inv.aplicado;
+
+  // Quantos dias faz que o número manual foi conferido. Sem `atualizado_em`,
+  // vale a data da aplicação — é a última vez que se sabe que estava certo.
+  const refManual=dataObj(inv.atualizadoEm)||ini;
+  const idade=fonte==="manual"&&refManual?diasCorridos(refManual,hoje):null;
 
   // Tributação é coluna própria, não deduzida do indexador: LCI rende a CDI
   // e é isenta; um COE tem valor manual e paga tabela regressiva.
@@ -1802,8 +1850,9 @@ function posicaoHoje(inv,hoje){
   const rf=t==="RENDA_FIXA";
   const iof=rf&&rend>0?rend*(iofPct(dias)/100):0;
   const ir=rf&&rend-iof>0?(rend-iof)*(irPct(dias)/100):0;
-  return{...inv,dias,bruto,rend,iof,ir,liquido:bruto-iof-ir,
-    estimado:!calculado,exato:calculado||exato,tributavel:rf};
+  return{...inv,dias,bruto,rend,iof,ir,liquido:bruto-iof-ir,fonte,idade,
+    cotacao:cot?cot.preco:0,
+    exato:fonte==="mercado"||(fonte==="indice"&&exato),tributavel:rf};
 }
 
 
@@ -1946,9 +1995,17 @@ function renderInvestimentos(){
         :i.indexador==="SELIC"?`${tx}% da Selic`
         :i.indexador==="IPCA"?`IPCA + ${tx}% a.a.`
         :i.indexador==="PREFIXADO"?`${tx}% a.a.`
-        :i.indexador==="POUPANCA"?"poupança":"valor de mercado";
-      const marca=i.estimado?(i.exato?"":' <span class="inv-tag">aprox.</span>')
-        :' <span class="inv-tag">manual</span>';
+        :i.indexador==="POUPANCA"?"poupança"
+        :i.fonte==="mercado"
+          ?`${String(i.quantidade).replace(".",",")} × ${fmtInv(i.cotacao)}`
+          :"valor de mercado";
+      // A etiqueta diz de onde veio o número. "manual · 47 dias" é a única
+      // informação que impede alguém de somar um preço de dois meses atrás
+      // como se fosse o de hoje.
+      const marca=i.fonte==="mercado"?' <span class="inv-tag">cotação</span>'
+        :i.fonte==="manual"?` <span class="inv-tag inv-velho">manual · ${i.idade}d</span>`
+        :i.fonte==="sem fonte"?' <span class="inv-tag inv-velho">sem fonte</span>'
+        :(i.exato?"":' <span class="inv-tag">aprox.</span>');
       const r=referencias(i.aplicado,diaNum(i.data),fimNum,i.dias);
       const meuLiq=i.liquido-i.aplicado;
       const vsCdi=meuLiq-r.cdi, vsPoup=meuLiq-r.poupanca;
@@ -1969,11 +2026,11 @@ function renderInvestimentos(){
             :"isento"}</div></td>
       </tr>`;}).join("");
 
-  const temManual=posicoes.some(i=>!i.estimado);
+  const temManual=posicoes.some(i=>i.fonte==="manual"||i.fonte==="mercado");
   document.getElementById("inv-nota").innerHTML=
     `<b>rendeu</b> e <b>no cdi</b> são brutos; <b>vs cdi</b> e <b>vs poup.</b> comparam
      o líquido, já com IR e IOF dos dois lados — a poupança é isenta.`+
-    (temManual?" Posição com valor manual não tem histórico, então entra no gráfico pelo aplicado.":"");
+    (temManual?" Ação e FII não têm histórico de preço aqui, então entram no gráfico pelo aplicado.":"");
 
   renderPizza(posicoes,bruto);
   renderSerie(posicoes,fimNum);
@@ -2077,7 +2134,7 @@ function serieComparada(posicoes,fimNum,maxPontos){
       const corridos=Math.round((dataObj(String(d).slice(6,8)+"/"+String(d).slice(4,6)+"/"+String(d).slice(0,4))-dataObj(p.data))/(24*3600*1000));
       // Posição de valor manual não tem histórico: fica no aplicado até hoje,
       // porque inventar a curva de uma ação seria desenhar dado que não existe.
-      carteira+=p.valorManual>0?p.aplicado
+      carteira+=(p.ticker||p.valorManual>0)&&p.indexador==="NENHUM"?p.aplicado
         :p.aplicado*fatorRendimento(p,ini,d,corridos).fator;
       const r=referencias(p.aplicado,ini,d,corridos);
       cdi+=p.aplicado+r.cdiBruto;
