@@ -340,6 +340,80 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
   .tabs{padding:0 16px;}
   .trans-table{display:block;overflow-x:auto;white-space:nowrap;}
 }
+
+/* ── INVESTIMENTOS ── */
+.inv-kpis{grid-template-columns:repeat(4,1fr);}
+.inv-data{font-family:var(--mono);font-size:11px;color:var(--muted);}
+.inv-linha{display:grid;grid-template-columns:1fr auto auto auto auto;gap:12px;align-items:baseline;
+  padding:9px 0;border-bottom:1px solid var(--border2);font-size:13px;}
+.inv-liq{color:var(--accent2);}
+.inv-tag{font-family:var(--mono);font-size:9px;color:var(--muted);border:1px solid var(--border2);
+  border-radius:4px;padding:1px 5px;vertical-align:middle;}
+.inv-linha:last-child{border-bottom:none;}
+.inv-ativo-meta{font-family:var(--mono);font-size:10px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:0.06em;margin-top:2px;}
+.inv-num{font-family:var(--mono);font-size:12px;text-align:right;min-width:88px;}
+.inv-ganho{font-family:var(--mono);font-size:12px;text-align:right;min-width:74px;}
+.inv-pos{color:var(--accent2);}
+.inv-neg{color:var(--red);}
+.inv-evo-linha{display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:7px 0;border-bottom:1px solid var(--border2);font-family:var(--mono);font-size:12px;}
+.inv-evo-linha:last-child{border-bottom:none;}
+.inv-evo-barra{flex:1;height:6px;border-radius:3px;background:var(--bg3);overflow:hidden;}
+.inv-evo-fill{height:100%;background:var(--accent);border-radius:3px;}
+@media(max-width:900px){.inv-kpis{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:640px){
+  .inv-linha{grid-template-columns:1fr auto;row-gap:2px;}
+  .inv-num:nth-of-type(1){grid-column:2;}
+  .inv-ganho{grid-column:2;}
+}
+
+/* ── CELULAR ──────────────────────────────────────────────
+   Medido em 375px: a página rolava para 604px de largura. A causa era a
+   `.header-controls` numa linha só (588px), e o efeito era o pior tipo de
+   quebra — a tela inteira desliza de lado ao tocar em qualquer lugar, e os
+   números da direita ficam fora do campo de visão sem nada indicando isso. */
+@media(max-width:640px){
+  header{padding:12px 14px;row-gap:10px;}
+  .logo{flex:1 1 auto;}
+
+  /* Os controles ganham a linha inteira e quebram sozinhos. Não cabem em
+     uma linha de 375px de jeito nenhum: só o seletor de conta e a navegação
+     de mês já passam de 290px. */
+  .header-controls{width:100%;flex-wrap:wrap;gap:10px 12px;}
+  .cartao-filter{flex:1 1 160px;min-width:0;}
+  #cartao-sel{width:100%;}
+  .perfil-chip{margin-left:auto;}
+  .perfil-menu{right:0;left:auto;}
+
+  /* Com a aba de investimentos são cinco; roletam de lado em vez de
+     espremer o texto até virar reticências. */
+  .tabs{overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{flex:0 0 auto;white-space:nowrap;padding:13px 14px;}
+
+  main{padding:14px 12px;}
+  .kpi-grid,.decomp-grid{gap:10px;}
+  .kpi-val{font-size:19px;}
+
+  /* Busca ocupa a linha; os filtros quebram embaixo. */
+  .parc-toolbar{flex-wrap:wrap;gap:8px;}
+  .parc-toolbar .search-box{flex:1 1 100%;min-width:0;}
+  .filter-btn{padding:8px 12px;}
+
+  /* Alvo de toque: o cartão da fila de revisão tem cinco campos e dois
+     botões de decisão, e errar o botão aqui grava a decisão errada. */
+  .proposta-campos input,.proposta-campos select{font-size:13px;padding:9px 10px;}
+  .proposta-campos input{flex:1 1 100%;}
+  .proposta-campos select{flex:1 1 calc(50% - 5px);min-width:0;}
+  .proposta-acoes button{flex:1;padding:11px 0;}
+  .proposta-topo{flex-direction:column;align-items:flex-start;gap:4px;}
+
+  .section-hdr{flex-wrap:wrap;gap:8px;}
+  .modal-row{flex-direction:column;gap:10px;}
+  .modal-btns{flex-direction:column-reverse;}
+  .modal-btns button{width:100%;padding:11px 0;}
+}
 </style>
 </head>
 <body>
@@ -404,6 +478,7 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
     <div class="tab" onclick="setTab('transacoes',this)">transações</div>
     <div class="tab" onclick="setTab('historico',this)">histórico</div>
     <div class="tab" onclick="setTab('revisar',this)">revisar<span id="tab-revisar-badge" class="badge-fila"></span></div>
+    <div class="tab" onclick="setTab('investimentos',this)">investimentos</div>
   </div>
 
   <div class="perfil-aviso" id="perfil-aviso"></div>
@@ -498,6 +573,49 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
           Nada para revisar. O que você mandar para o bot no Telegram cai aqui como proposta.
         </div>
         <div id="revisar-lista"></div>
+      </div>
+    </div>
+
+    <div id="tab-investimentos" class="tab-content">
+      <div id="inv-vazio" class="coming-soon" style="display:none">
+        <div>nenhuma posição registrada</div>
+        <div style="font-size:11px;max-width:420px;text-align:center;line-height:1.6">
+          Esta aba lê a guia <b>Investimentos</b> da planilha. Uma linha por
+          aplicação, escrita uma vez só:<br>
+          <span style="font-family:var(--mono)">data · perfil · instituição ·
+          produto · classe · indexador · taxa · aplicado · valor_manual ·
+          tributação · observação</span><br>
+          <b>indexador</b>: CDI, SELIC, IPCA, PREFIXADO, POUPANCA ou NENHUM.
+          <b>tributação</b> pode ficar vazia — só se preenche para LCI, LCA
+          (ISENTO) e ação (ACOES).<br>
+          O valor de hoje sai da série diária do Banco Central; para ação,
+          FII, COE e fundo, preencha <b>valor_manual</b>.
+        </div>
+      </div>
+      <div id="inv-content" style="display:none">
+        <div class="kpi-grid inv-kpis"></div>
+        <div class="section">
+          <div class="section-hdr"><span class="section-title">composição por classe</span>
+            <span class="inv-data" id="inv-data"></span></div>
+          <div class="card">
+            <div class="stack-bars" id="inv-stack"></div>
+            <div class="stack-legend" id="inv-legenda"></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-hdr"><span class="section-title">por ativo</span></div>
+          <div class="card"><div id="inv-ativos"></div></div>
+        </div>
+        <div class="section" id="inv-comparativo-area" style="display:none">
+          <div class="section-hdr"><span class="section-title">o mesmo dinheiro, no mesmo tempo</span></div>
+          <div class="card"><div id="inv-comparativo"></div></div>
+        </div>
+      </div>
+      <div class="section" id="inv-fluxo-area" style="display:none">
+        <div class="section-hdr"><span class="section-title">aportes e resgates</span>
+          <span class="inv-data" id="inv-fluxo-periodo"></span></div>
+        <div id="inv-fluxo-alerta"></div>
+        <div class="card"><div id="inv-fluxo"></div></div>
       </div>
     </div>
 
@@ -812,7 +930,7 @@ function movimentosDeDados(dados){
 
 async function carregarTudo(){
   // A aba da Julia pode não existir ainda; o catch evita derrubar o painel todo.
-  const[txRows,juliaRows,splitRows,cfgL,compL,cfgJ,compJ,movL,movJ,saldos,ovRows,reembRows,pcRows,propRows]=await Promise.all([
+  const[txRows,juliaRows,splitRows,cfgL,compL,cfgJ,compJ,movL,movJ,saldos,ovRows,reembRows,pcRows,propRows,invRows,idxRows]=await Promise.all([
     fetchSheet("Transações!A5:P1000"),
     fetchSheet("'Transações Julia'!A5:P1000").catch(()=>[]),
     fetchSheet("Config!C9").catch(()=>[]),
@@ -827,6 +945,8 @@ async function carregarTudo(){
     fetchSheet(RANGE_REEMBOLSOS).catch(()=>[]),
     fetchSheet(RANGE_PARCELAS_CASAL).catch(()=>[]),
     fetchSheet(RANGE_PROPOSTAS).catch(()=>[]),
+    fetchSheet(RANGE_INVEST).catch(()=>[]),
+    fetchSheet(RANGE_INDICES).catch(()=>[]),
   ]);
   dadosPorPerfil.Lucas=txRows.filter(r=>r[0]).map(parseLinha);
   dadosPorPerfil.Julia=juliaRows.filter(r=>r[0]).map(parseLinha);
@@ -848,6 +968,15 @@ async function carregarTudo(){
   linhasRemotas=ovRows.length;
   parcelasCasal=lerParcelasCasal(pcRows);
   propostas=lerPropostas(propRows);
+  investimentos=lerInvestimentos(invRows);
+  CDI_AA=taxaNum((idxRows[0]||[])[0]);
+  POUP_AM=taxaNum((idxRows[1]||[])[0]);
+  // Busca as séries só a partir da aplicação mais antiga: pedir dez anos de
+  // CDI para calcular doze dias seria desperdício, e o SGS recusa janelas
+  // muito largas.
+  const maisAntiga=investimentos.map(i=>i.data)
+    .sort((a,b)=>dataOrd(a).localeCompare(dataOrd(b)))[0];
+  if(maisAntiga)await carregarSeries(maisAntiga);
   reembEsperados=reembRows.map(r=>String((r||[])[0]||"").trim().toLowerCase()).filter(Boolean);
   lerConfig("Lucas",cfgL,compL);
   lerConfig("Julia",cfgJ,compJ);
@@ -1149,6 +1278,7 @@ function renderAll(){
   // o primeiro clique nas setas: mostrava 04/2026 exibindo dados de agosto.
   document.getElementById("month-label").textContent=mesStr(mesAtual.m,mesAtual.y);
   renderizarMes();renderTransacoes();renderizarHistorico();renderRevisar();
+  renderInvestimentos();
 }
 
 // ── LANÇAMENTOS ───────────────────────────────────────────
@@ -1397,6 +1527,447 @@ const RANGE_REEMBOLSOS="Config!B49:B60";
 // perfil, loja normalizada, valores separados por `;`, rateio.
 const RANGE_PARCELAS_CASAL="Config!B63:E80";
 
+// ── INVESTIMENTOS ─────────────────────────────────────────
+// A planilha guarda o que não dá para deduzir: quanto entrou, quando, e a
+// que taxa. O valor de hoje o painel calcula. É o contrário de lançar foto
+// todo mês — para renda fixa indexada, a foto é redundante com a fórmula, e
+// uma foto esquecida faz o painel mostrar patrimônio velho como se fosse
+// atual.
+//
+// Colunas (Investimentos!A:J):
+//   data · perfil · instituicao · produto · classe · indexador · taxa ·
+//   aplicado · valor_manual · observacao
+//
+// `indexador` é CDI, PREFIXADO, POUPANCA ou NENHUM. `taxa` é 115 para "115%
+// do CDI" e 12,5 para "12,5% ao ano" prefixado. `valor_manual`, quando
+// preenchido, manda sobre o cálculo — é a saída para renda variável, onde
+// nenhuma fórmula acerta o preço.
+const RANGE_INVEST="Investimentos!A2:K300";
+// Rede de segurança, não fonte principal: CDI ao ano e poupança ao mês para
+// quando as séries do Banco Central não vierem. Sem série e sem isto, o
+// painel mostra o aplicado e diz que não estimou — nunca inventa taxa.
+const RANGE_INDICES="Config!B83:B84";
+let investimentos=[];
+let CDI_AA=0, POUP_AM=0;
+
+// ── SÉRIES DO BANCO CENTRAL ───────────────────────────────
+// O SGS entrega a série diária real do CDI, em % por dia útil. Com ela o
+// rendimento deixa de ser estimativa: capitaliza-se dia a dia, que é como o
+// produto rende de verdade. A conta anterior convertia dias corridos por
+// 252/365 e errava alguns centavos por mês.
+//
+// A API do BCB responde com CORS aberto — testado do próprio domínio do
+// painel. Ainda assim tudo é opcional: se cair, o cálculo antigo assume.
+const SGS={CDI:12,SELIC:11,IPCA:433,POUPANCA:196};
+const series={CDI:[],SELIC:[],IPCA:[],POUPANCA:[]};
+
+// DD/MM/AAAA -> 20260819, que compara e ordena como número.
+const diaNum=d=>{
+  const p=String(d||"").split("/");
+  return p.length===3?+(p[2]+p[1].padStart(2,"0")+p[0].padStart(2,"0")):0;
+};
+
+async function carregarSeries(desde){
+  const hoje=new Date();
+  const fim=`${String(hoje.getDate()).padStart(2,"0")}/${String(hoje.getMonth()+1).padStart(2,"0")}/${hoje.getFullYear()}`;
+  const carimbo=hoje.toISOString().slice(0,10);
+  await Promise.all(Object.entries(SGS).map(async([nome,cod])=>{
+    // Uma leitura por dia por série. A série de ontem não muda, e bater no
+    // BCB a cada `renderAll()` seria pedir bloqueio por volume.
+    const chave=`sgs:${cod}:${desde}`;
+    try{
+      const salvo=JSON.parse(localStorage.getItem(chave)||"null");
+      if(salvo&&salvo.quando===carimbo){series[nome]=salvo.dados;return;}
+    }catch(e){/* cache corrompido não pode derrubar o painel */}
+    try{
+      const r=await fetch(`https://api.bcb.gov.br/dados/serie/bcdata.sgs.${cod}`+
+        `/dados?formato=json&dataInicial=${desde}&dataFinal=${fim}`);
+      if(!r.ok)throw new Error("HTTP "+r.status);
+      const dados=(await r.json()).map(o=>({d:diaNum(o.data),v:parseFloat(o.valor)}))
+        .filter(o=>o.d&&isFinite(o.v));
+      series[nome]=dados;
+      try{localStorage.setItem(chave,JSON.stringify({quando:carimbo,dados}));}
+      catch(e){/* cota cheia: seguir sem cache é melhor que não seguir */}
+    }catch(e){
+      series[nome]=[];
+      console.warn("série "+nome+" indisponível, usando taxa da Config:",e.message);
+    }
+  }));
+}
+
+// DD/MM/AAAA não ordena como texto. Vira AAAAMMDD, que ordena.
+const dataOrd=d=>{
+  const p=String(d||"").split("/");
+  return p.length===3?p[2]+p[1].padStart(2,"0")+p[0].padStart(2,"0"):"";
+};
+
+const dataObj=d=>{
+  const p=String(d||"").split("/");
+  return p.length===3?new Date(+p[2],+p[1]-1,+p[0]):null;
+};
+
+// Aceita "115", "115%", "14,90" e "14,90%".
+const taxaNum=s=>parseFloat(String(s??"").replace("%","").replace(",","."))||0;
+
+// Como o dinheiro rende e como ele é tributado são coisas **independentes**,
+// e tratá-las como uma só erra nos dois sentidos: LCI rende a CDI e é isenta;
+// um COE tem valor manual e paga tabela regressiva. Por isso duas colunas.
+//
+// `tributacao` vazia usa o padrão do indexador — na prática você só preenche
+// para LCI, LCA e ação.
+const TRIB_PADRAO={CDI:"RENDA_FIXA",SELIC:"RENDA_FIXA",IPCA:"RENDA_FIXA",
+  PREFIXADO:"RENDA_FIXA",POUPANCA:"ISENTO",NENHUM:"NENHUM"};
+
+function lerInvestimentos(linhas){
+  return(linhas||[]).map(r=>{
+    const indexador=String((r||[])[5]||"").trim().toUpperCase()||"NENHUM";
+    return{
+      data:String(r[0]||"").trim(),
+      perfil:String(r[1]||"").trim(),
+      instituicao:String(r[2]||"").trim(),
+      produto:String(r[3]||"").trim(),
+      classe:String(r[4]||"").trim()||"Sem classe",
+      indexador,
+      taxa:taxaNum(r[6]),
+      aplicado:valorBRL(r[7]),
+      valorManual:valorBRL(r[8]),
+      tributacao:String(r[9]||"").trim().toUpperCase().replace(/\s+/g,"_")||
+        TRIB_PADRAO[indexador]||"NENHUM",
+      obs:String(r[10]||"").trim(),
+    };
+  }).filter(i=>i.produto&&dataOrd(i.data)&&i.aplicado>0);
+}
+
+// Sem perfil e "casal" aparecem para os dois — o mesmo critério que a fila de
+// revisão usa, para não haver duas noções de "meu" no painel.
+const investDoPerfil=()=>investimentos.filter(i=>{
+  const p=i.perfil.toLowerCase();
+  return !p||p==="casal"||p===perfil.toLowerCase();
+});
+
+const diasCorridos=(de,ate)=>Math.max(0,
+  Math.floor((ate-de)/(24*3600*1000)));
+
+// IOF regressivo sobre o rendimento nos 30 primeiros dias. Tabela oficial,
+// não fórmula: a progressão não é linear e arredondar por conta própria
+// erraria em quase todo dia.
+const IOF=[96,93,90,86,83,80,76,73,70,66,63,60,56,53,50,
+           46,43,40,36,33,30,26,23,20,16,13,10,6,3,0];
+const iofPct=dias=>dias<1?96:(dias<=30?IOF[dias-1]:0);
+
+// IR regressivo da renda fixa, sobre o rendimento. Some depois de dois anos
+// de 22,5% para 15% — é a razão de "quanto sobra se eu sacar hoje" mudar
+// sozinho ao longo do tempo, sem o investimento mudar.
+const irPct=dias=>dias<=180?22.5:dias<=360?20:dias<=720?17.5:15;
+
+// Fator de rendimento entre duas datas. Devolve `{fator, exato}` — `exato`
+// diz se veio da série real ou da aproximação, e a tela mostra a diferença
+// em vez de apresentar as duas com a mesma cara.
+//
+// Com a série, CDI e Selic capitalizam **dia útil a dia útil**, que é como o
+// produto rende de fato: o fator é o produto de (1 + taxa_do_dia × %). Sem
+// ela, cai na conversão de dias corridos por 252/365, que erra centavos.
+function fatorRendimento(inv,ini,fim,dias){
+  if(dias<=0)return{fator:1,exato:true};
+  const idx=inv.indexador;
+
+  if(idx==="CDI"||idx==="SELIC"){
+    const s=series[idx]||[];
+    // O dia da aplicação **conta**. RDB, CDB e Tesouro rendem a partir de
+    // D0, não de D+1. Excluí-lo dava R$ 5.020,83 onde o extrato do Nubank
+    // mostrava R$ 5.023,81 — um dia útil inteiro a menos, e o erro cresce
+    // com o tempo em vez de se diluir.
+    const janela=s.filter(o=>o.d>=ini&&o.d<=fim);
+    if(janela.length){
+      return{fator:janela.reduce((f,o)=>f*(1+(o.v/100)*(inv.taxa/100)),1),exato:true};
+    }
+    if(!CDI_AA)return{fator:1,exato:false};
+    const diaria=(Math.pow(1+CDI_AA/100,1/252)-1)*(inv.taxa/100);
+    return{fator:Math.pow(1+diaria,dias*(252/365)),exato:false};
+  }
+
+  if(idx==="IPCA"){
+    // IPCA+ tem duas pernas: a inflação do período e o juro real acordado.
+    // A inflação vem por mês fechado; o spread corre por dia corrido.
+    const s=series.IPCA||[];
+    const meses=s.filter(o=>o.d>ini&&o.d<=fim);
+    if(!meses.length)return{fator:1,exato:false};
+    const infl=meses.reduce((f,o)=>f*(1+o.v/100),1);
+    return{fator:infl*Math.pow(1+inv.taxa/100,dias/365),exato:true};
+  }
+
+  if(idx==="PREFIXADO"){
+    // Prefixado não depende de índice nenhum: a taxa contratada já é a
+    // resposta, e por isso é exato sem precisar de série.
+    return{fator:Math.pow(1+inv.taxa/100,dias/365),exato:true};
+  }
+
+  if(idx==="POUPANCA"){
+    // Poupança só credita no aniversário: mês quebrado não rende nada. Usar
+    // fração de mês daria a ela um rendimento que ela não paga.
+    const completos=Math.floor(dias/30);
+    if(!completos)return{fator:1,exato:true};
+    const s=series.POUPANCA||[];
+    const meses=s.filter(o=>o.d>ini&&o.d<=fim).slice(-completos);
+    if(meses.length===completos){
+      return{fator:meses.reduce((f,o)=>f*(1+o.v/100),1),exato:true};
+    }
+    if(!POUP_AM)return{fator:1,exato:false};
+    return{fator:Math.pow(1+POUP_AM/100,completos),exato:false};
+  }
+
+  return{fator:1,exato:true};
+}
+
+// Tudo que a tela precisa saber sobre uma posição hoje.
+function posicaoHoje(inv,hoje){
+  const ini=dataObj(inv.data);
+  const dias=ini?diasCorridos(ini,hoje):0;
+  const {fator,exato}=fatorRendimento(inv,diaNum(inv.data),diaNum(
+    `${String(hoje.getDate()).padStart(2,"0")}/${String(hoje.getMonth()+1).padStart(2,"0")}/${hoje.getFullYear()}`),dias);
+
+  // Valor digitado manda sobre qualquer fórmula: é o preço de mercado, e
+  // nenhum indexador acerta ação, FII ou fundo.
+  const calculado=inv.valorManual>0;
+  const bruto=calculado?inv.valorManual:inv.aplicado*fator;
+  const rend=bruto-inv.aplicado;
+
+  // Tributação é coluna própria, não deduzida do indexador: LCI rende a CDI
+  // e é isenta; um COE tem valor manual e paga tabela regressiva.
+  //   RENDA_FIXA — IOF nos 30 primeiros dias, depois IR regressivo.
+  //   ISENTO     — LCI, LCA, poupança, debênture incentivada.
+  //   ACOES      — 15% só na venda, e há isenção mensal. Uma posição parada
+  //                não deve nada, então o painel não estima.
+  const t=inv.tributacao;
+  const rf=t==="RENDA_FIXA";
+  const iof=rf&&rend>0?rend*(iofPct(dias)/100):0;
+  const ir=rf&&rend-iof>0?(rend-iof)*(irPct(dias)/100):0;
+  return{...inv,dias,bruto,rend,iof,ir,liquido:bruto-iof-ir,
+    estimado:!calculado,exato:calculado||exato,tributavel:rf};
+}
+
+// O mesmo dinheiro, no mesmo tempo, nas duas referências. É o que responde
+// "valeu a pena?" — sem isso, 115% do CDI é só um número no papel.
+function comparativo(posicoes,hoje){
+  const fimNum=diaNum(
+    `${String(hoje.getDate()).padStart(2,"0")}/${String(hoje.getMonth()+1).padStart(2,"0")}/${hoje.getFullYear()}`);
+  let meu=0,cdi=0,poup=0,base=0;
+  posicoes.forEach(p=>{
+    const iniNum=diaNum(p.data);
+    const dias=p.dias;
+    base+=p.aplicado;
+    meu+=p.liquido-p.aplicado;
+
+    const rCdi=p.aplicado*
+      fatorRendimento({indexador:"CDI",taxa:100},iniNum,fimNum,dias).fator-p.aplicado;
+    // Comparar bruto com líquido enganaria a favor da poupança, que é isenta.
+    // O CDI de referência leva o mesmo IR e IOF que a posição real levaria.
+    const iof=rCdi>0?rCdi*(iofPct(dias)/100):0;
+    const ir=rCdi-iof>0?(rCdi-iof)*(irPct(dias)/100):0;
+    cdi+=rCdi-iof-ir;
+
+    poup+=p.aplicado*
+      fatorRendimento({indexador:"POUPANCA"},iniNum,fimNum,dias).fator-p.aplicado;
+  });
+  return{base,meu,cdi,poup};
+}
+
+const CORES_CLASSE=["var(--accent)","var(--blue)","var(--purple)","var(--amber)",
+  "var(--accent2)","var(--red)"];
+
+// O resto do painel arredonda para real inteiro, e nas outras abas isso é uma
+// virtude — ninguém decide nada com os centavos de uma fatura. Aqui é o
+// contrário: a diferença entre 115% e 100% do CDI, em R$ 5.000 e doze dias,
+// é R$ 1,07. Arredondado vira "R$ 1" e a comparação inteira perde o sentido.
+const fmtInv=v=>fmtCentavos(v);
+const pctBR=v=>(v>=0?"+":"−")+Math.abs(v).toFixed(2).replace(".",",")+"%";
+
+// O ledger já registra aporte e resgate — o que ele não sabe é quanto o
+// investimento vale hoje. As duas metades ficam separadas na tela de
+// propósito: somar fluxo com posição daria um "patrimônio" que confunde
+// dinheiro que entrou com dinheiro que rendeu.
+//
+// `REMUNERACAO APLICACAO AUTOMATICA` fica de fora apesar de casar com
+// "aplicação": é juros de saldo parado em conta corrente, não aporte. São
+// centavos, mas entrariam como movimentação de carteira e o painel passaria a
+// afirmar que existe investimento onde não há.
+const RE_INVEST=/\brdb\b|\bcdb\b|\blci\b|\blca\b|tesouro|aplicac|resgate/i;
+const RE_INVEST_NAO=/remunerac/i;
+
+function fluxoInvestimentos(){
+  return(movimentosPorPerfil[perfil]||[]).filter(m=>{
+    const t=`${m.desc||""} ${m.descOriginal||""}`;
+    if(RE_INVEST_NAO.test(t))return false;
+    return m.cat==="Investimentos"||m.tipo==="Investimento"||RE_INVEST.test(t);
+  });
+}
+
+function renderFluxoInvest(temPosicao){
+  const area=document.getElementById("inv-fluxo-area");
+  if(!area)return 0;
+  const linhas=fluxoInvestimentos();
+  if(!linhas.length){area.style.display="none";return 0;}
+  area.style.display="block";
+
+  const porBanco={};
+  linhas.forEach(m=>{
+    const b=porBanco[m.banco]||(porBanco[m.banco]={aportado:0,resgatado:0,n:0});
+    if(m.direcao==="Débito")b.aportado+=m.debito; else b.resgatado+=m.credito;
+    b.n++;
+  });
+
+  const datas=linhas.map(m=>m.data).filter(Boolean)
+    .sort((a,b)=>dataOrd(a).localeCompare(dataOrd(b)));
+  document.getElementById("inv-fluxo-periodo").textContent=
+    datas.length?`${datas[0]} a ${datas[datas.length-1]}`:"";
+
+  document.getElementById("inv-fluxo").innerHTML=Object.entries(porBanco)
+    .sort((a,b)=>(b[1].aportado+b[1].resgatado)-(a[1].aportado+a[1].resgatado))
+    .map(([banco,v])=>{
+      const liq=v.aportado-v.resgatado;
+      return`<div class="inv-linha">
+        <div><div>${esc(banco)}</div>
+          <div class="inv-ativo-meta">${v.n} movimenta${v.n===1?"ção":"ções"}</div></div>
+        <div class="inv-num" style="color:var(--muted)">−${fmtInv(v.aportado)}</div>
+        <div class="inv-num inv-pos">+${fmtInv(v.resgatado)}</div>
+        <div class="inv-ganho ${liq>=0?"":"inv-neg"}">${liq>=0?"":"−"}${fmtInv(Math.abs(liq))}</div>
+        <div></div>
+      </div>`;}).join("")+
+    (temPosicao?"":`<div class="inv-ativo-meta" style="margin-top:10px;text-transform:none;letter-spacing:0">
+      Isto é o que entrou e saiu, não quanto vale hoje. Registre uma linha na
+      guia <b>Investimentos</b> da planilha para o painel calcular rentabilidade.</div>`);
+
+  // Resgate classificado como `Entradas` conta como receita nova no mês, e
+  // não é: é dinheiro tirado do próprio investimento. Vale avisar com o
+  // número, porque o efeito é invisível olhando só o total de entradas.
+  const resgateComoEntrada=linhas
+    .filter(m=>m.direcao==="Crédito"&&m.cat==="Entradas")
+    .reduce((s,m)=>s+m.credito,0);
+  document.getElementById("inv-fluxo-alerta").innerHTML=resgateComoEntrada>0
+    ?`<div class="reemb-alert"><span>•</span><span>${fmtInv(resgateComoEntrada)} de resgate
+      está classificado como <b>Entradas</b>. Não é receita nova — é dinheiro
+      saindo do investimento, e enquanto estiver assim ele infla as entradas
+      do mês.</span></div>`:"";
+  return linhas.length;
+}
+
+function renderInvestimentos(){
+  const lista=investDoPerfil();
+  const hoje=new Date();
+  const posicoes=lista.map(i=>posicaoHoje(i,hoje));
+  const vazio=document.getElementById("inv-vazio");
+  const conteudo=document.getElementById("inv-content");
+  if(!vazio||!conteudo)return;
+  // O fluxo renderiza mesmo sem posição nenhuma: o ledger já sabe o que foi
+  // aportado, e esconder isso faria a aba parecer vazia tendo dado.
+  const temFluxo=renderFluxoInvest(posicoes.length>0);
+  if(!posicoes.length){
+    vazio.style.display=temFluxo?"none":"flex";
+    conteudo.style.display="none";
+    return;
+  }
+  vazio.style.display="none";conteudo.style.display="block";
+
+  const bruto=posicoes.reduce((s,i)=>s+i.bruto,0);
+  const aplicado=posicoes.reduce((s,i)=>s+i.aplicado,0);
+  const liquido=posicoes.reduce((s,i)=>s+i.liquido,0);
+  const imposto=bruto-liquido;
+  const ganho=bruto-aplicado;
+  const pct=aplicado>0?(ganho/aplicado)*100:null;
+  // "Aproximado" só quando a série faltou. Cálculo pela série diária do BC é
+  // exato, e chamá-lo de estimativa esconderia a diferença entre os dois.
+  const algumAproximado=posicoes.some(i=>!i.exato);
+
+  const sinal=v=>v>=0?"inv-pos":"inv-neg";
+  document.querySelector(".inv-kpis").innerHTML=`
+    <div class="kpi"><div class="kpi-lbl">bruto hoje</div>
+      <div class="kpi-val">${fmtInv(bruto)}</div>
+      <div class="kpi-sub">${posicoes.length} posiç${posicoes.length===1?"ão":"ões"}${algumAproximado?" · alguma aproximada":""}</div></div>
+    <div class="kpi"><div class="kpi-lbl">aplicado</div>
+      <div class="kpi-val" style="color:var(--muted)">${fmtInv(aplicado)}</div>
+      <div class="kpi-sub">soma dos aportes</div></div>
+    <div class="kpi"><div class="kpi-lbl">rendimento</div>
+      <div class="kpi-val ${sinal(ganho)}">${ganho>=0?"+":"−"}${fmtInv(Math.abs(ganho))}</div>
+      <div class="kpi-sub">${pct===null?"—":pctBR(pct)+" no período"}</div></div>
+    <div class="kpi"><div class="kpi-lbl">se resgatar hoje</div>
+      <div class="kpi-val">${fmtInv(liquido)}</div>
+      <div class="kpi-sub">${imposto>0?"−"+fmtInv(imposto)+" de IR e IOF":"sem imposto a pagar"}</div></div>`;
+
+  // A tela diz de onde veio o número. "Série do BC" e "taxa aproximada" são
+  // confiabilidades diferentes e não podem ter a mesma aparência.
+  const ultimoCdi=(series.CDI||[]).slice(-1)[0];
+  document.getElementById("inv-data").textContent=ultimoCdi
+    ?`série do BC · CDI ${((Math.pow(1+ultimoCdi.v/100,252)-1)*100).toFixed(2).replace(".",",")}% a.a.`
+    :(CDI_AA?`taxa aproximada da Config · CDI ${CDI_AA.toFixed(2).replace(".",",")}% a.a.`
+            :"sem CDI: série do BC fora do ar e Config vazia");
+
+  const porClasse={};
+  posicoes.forEach(i=>{porClasse[i.classe]=(porClasse[i.classe]||0)+i.bruto;});
+  const classes=Object.entries(porClasse).sort((a,b)=>b[1]-a[1]);
+  document.getElementById("inv-stack").innerHTML=classes.map(([,v],n)=>
+    `<div class="stack-seg" style="width:${bruto?(v/bruto)*100:0}%;background:${CORES_CLASSE[n%CORES_CLASSE.length]}"></div>`).join("");
+  document.getElementById("inv-legenda").innerHTML=classes.map(([c,v],n)=>
+    `<span class="stack-leg-item"><span style="width:8px;height:8px;border-radius:2px;background:${CORES_CLASSE[n%CORES_CLASSE.length]}"></span>${esc(c)} ${bruto?((v/bruto)*100).toFixed(0):0}%</span>`).join("");
+
+  document.getElementById("inv-ativos").innerHTML=posicoes
+    .sort((a,b)=>b.bruto-a.bruto).map(i=>{
+      const p=i.aplicado>0?(i.rend/i.aplicado)*100:null;
+      const tx=String(i.taxa).replace(".",",");
+      const indexa=i.indexador==="CDI"?`${tx}% do CDI`
+        :i.indexador==="SELIC"?`${tx}% da Selic`
+        :i.indexador==="IPCA"?`IPCA + ${tx}% a.a.`
+        :i.indexador==="PREFIXADO"?`${tx}% a.a.`
+        :i.indexador==="POUPANCA"?"poupança":"valor de mercado";
+      const marca=i.estimado?(i.exato?"":' <span class="inv-tag">aprox.</span>')
+        :' <span class="inv-tag">manual</span>';
+      return`<div class="inv-linha">
+        <div><div>${esc(i.produto)}${marca}</div>
+          <div class="inv-ativo-meta">${esc(i.instituicao||"—")} · ${esc(i.classe)} · ${esc(indexa)} · ${i.dias}d${i.obs?" · "+esc(i.obs):""}</div></div>
+        <div class="inv-num" style="color:var(--muted)">${fmtInv(i.aplicado)}</div>
+        <div class="inv-num">${fmtInv(i.bruto)}</div>
+        <div class="inv-ganho ${p===null?"":sinal(i.rend)}">${p===null?"—":pctBR(p)}</div>
+        <div class="inv-num inv-liq">${fmtInv(i.liquido)}<div class="inv-ativo-meta">${
+          i.tributavel?`IR ${String(irPct(i.dias)).replace(".",",")}%${iofPct(i.dias)?` · IOF ${iofPct(i.dias)}%`:""}`:"sem imposto estimado"}</div></div>
+      </div>`;}).join("");
+
+  renderComparativo(posicoes,hoje);
+}
+
+// "Valeu a pena?" não se responde com o rendimento sozinho — só comparando o
+// mesmo dinheiro, no mesmo tempo, nas alternativas óbvias.
+function renderComparativo(posicoes,hoje){
+  const area=document.getElementById("inv-comparativo-area");
+  if(!area)return;
+  if(!CDI_AA||!POUP_AM){
+    area.style.display="block";
+    document.getElementById("inv-comparativo").innerHTML=
+      `<div class="inv-ativo-meta" style="text-transform:none;letter-spacing:0">
+        Para comparar com CDI e poupança, preencha na aba <b>Config</b>:
+        <b>B83</b> = CDI ao ano (ex.: 14,90) e <b>B84</b> = poupança ao mês
+        (ex.: 0,5). Sem isso o painel não chuta taxa.</div>`;
+    return;
+  }
+  area.style.display="block";
+  const c=comparativo(posicoes,hoje);
+  const linhas=[
+    ["o seu",c.meu,"var(--accent)"],
+    ["100% do CDI",c.cdi,"var(--blue)"],
+    ["poupança",c.poup,"var(--amber)"],
+  ];
+  const teto=Math.max(...linhas.map(l=>Math.abs(l[1])),0.01);
+  const vsCdi=c.meu-c.cdi, vsPoup=c.meu-c.poup;
+  document.getElementById("inv-comparativo").innerHTML=
+    linhas.map(([nome,v,cor])=>
+      `<div class="inv-evo-linha"><span style="min-width:96px;color:var(--muted)">${nome}</span>
+        <span class="inv-evo-barra"><span class="inv-evo-fill" style="width:${(Math.abs(v)/teto)*100}%;background:${cor}"></span></span>
+        <span style="min-width:96px;text-align:right">${v>=0?"+":"−"}${fmtInv(Math.abs(v))}</span></div>`).join("")+
+    `<div class="inv-ativo-meta" style="margin-top:10px;text-transform:none;letter-spacing:0">
+      Líquido de IR e IOF, sobre ${fmtInv(c.base)} aplicados. Contra o CDI cheio
+      você está ${vsCdi>=0?"à frente":"atrás"} em ${fmtInv(Math.abs(vsCdi))}; contra a
+      poupança, ${vsPoup>=0?"à frente":"atrás"} em ${fmtInv(Math.abs(vsPoup))}.
+      A poupança é isenta de IR e só credita no aniversário do mês.</div>`;
+}
+
 // ── FILA DE REVISÃO ───────────────────────────────────────
 // O bot do Telegram lê o print e escreve aqui uma linha *proposta*; ela só
 // vira gasto depois que alguém confirma nesta tela. É a diferença entre o
@@ -1634,6 +2205,9 @@ function lerPropostas(linhas){
 const propostasPendentes=()=>propostas.filter(p=>
   p.status==="pendente"&&(!p.perfil||p.perfil===perfil));
 
+const opcoesSelect=(lista,atual)=>lista.map(v=>
+  `<option value="${esc(v)}"${v===atual?" selected":""}>${esc(v)}</option>`).join("");
+
 function renderRevisar(){
   const fila=propostasPendentes();
   const badge=document.getElementById("tab-revisar-badge");
@@ -1653,12 +2227,14 @@ function renderRevisar(){
     return`<div class="proposta" data-id="${esc(p.id)}">
       <div class="proposta-topo">
         <span class="proposta-valor">${p.direcao==="Crédito"?"+":"−"} ${fmtCentavos(p.valor)}</span>
-        <span class="proposta-meta">${esc(p.data)} · ${esc(p.banco)} · ${esc(p.produto)} · ${esc(p.origem||"—")} · ${conf}</span>
+        <span class="proposta-meta">${esc(p.data)} · ${esc(p.banco)} · ${esc(p.origem||"—")} · ${conf}</span>
       </div>
       <div class="proposta-campos">
         <input data-campo="desc" value="${esc(p.desc)}" placeholder="descrição">
-        <select data-campo="cat">${cats.map(c=>
-          `<option value="${esc(c)}"${c===p.cat?" selected":""}>${esc(c)}</option>`).join("")}</select>
+        <select data-campo="cat">${opcoesSelect(cats,p.cat)}</select>
+        <select data-campo="direcao">${opcoesSelect(["Débito","Crédito"],p.direcao)}</select>
+        <select data-campo="produto">${opcoesSelect(["conta","cartao"],p.produto)}</select>
+        <select data-campo="perfil">${opcoesSelect(["Lucas","Julia"],p.perfil)}</select>
       </div>
       <div class="proposta-acoes">
         <button class="btn-confirmar" data-acao="confirmar">confirmar</button>
@@ -1668,6 +2244,15 @@ function renderRevisar(){
   }).join("");
   lista.querySelectorAll(".proposta").forEach(cartao=>{
     const id=cartao.dataset.id;
+    // O sinal fica no topo do cartão, longe do select que o controla. Sem isto
+    // dá para deixar "Crédito" escolhido com um "−" grande logo acima — e a
+    // pessoa confirma acreditando no sinal, que é o que ela olha primeiro.
+    const sel=cartao.querySelector('[data-campo="direcao"]');
+    const p=propostas.find(x=>x.id===id);
+    sel.addEventListener("change",()=>{
+      cartao.querySelector(".proposta-valor").textContent=
+        `${sel.value==="Crédito"?"+":"−"} ${fmtCentavos(p.valor)}`;
+    });
     cartao.querySelector('[data-acao="confirmar"]')
       .addEventListener("click",()=>decidirProposta(id,"confirmada",cartao));
     cartao.querySelector('[data-acao="rejeitar"]')
@@ -1680,6 +2265,9 @@ async function decidirProposta(id,decisao,cartao){
   if(!p)return;
   p.desc=cartao.querySelector('[data-campo="desc"]').value.trim()||p.desc;
   p.cat=cartao.querySelector('[data-campo="cat"]').value;
+  p.direcao=cartao.querySelector('[data-campo="direcao"]').value;
+  p.produto=cartao.querySelector('[data-campo="produto"]').value;
+  p.perfil=cartao.querySelector('[data-campo="perfil"]').value;
   p.status=decisao;
   p.revisadoPor=perfil;
   p.revisadoEm=new Date().toISOString();
@@ -1706,7 +2294,8 @@ async function gravarProposta(p){
   if(idx<0)throw new Error("a proposta sumiu da planilha");
   const atual=linhas[idx]||[];
   const nova=COLS_PROPOSTAS.map((_,i)=>String(atual[i]??""));
-  nova[8]=p.desc; nova[11]=p.cat; nova[13]=p.status;
+  nova[2]=p.perfil; nova[7]=p.produto; nova[8]=p.desc;
+  nova[10]=p.direcao; nova[11]=p.cat; nova[13]=p.status;
   nova[14]=p.revisadoPor; nova[15]=p.revisadoEm;
   const linha=idx+2;
   await sheetsPut(`${ABA_PROPOSTAS}!A${linha}:Q${linha}`,[nova]);
