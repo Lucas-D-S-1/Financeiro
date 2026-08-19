@@ -160,26 +160,10 @@ main{padding:28px 32px;max-width:1260px;margin:0 auto;}
 #login-erro.visivel{display:block;}
 #login-erro strong{display:block;color:var(--red);margin-bottom:4px;}
 /* Fila de revisão */
-.badge-fila{display:none;margin-left:6px;padding:1px 7px;border-radius:20px;font-size:11px;
-  background:var(--accent);color:#0E1117;font-weight:600;}
-.badge-fila.tem{display:inline-block;}
-.proposta{border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;
-  background:var(--bg3);}
-.proposta-topo{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
-  flex-wrap:wrap;margin-bottom:10px;}
-.proposta-valor{font-family:var(--mono);font-size:16px;font-weight:600;}
-.proposta-meta{font-family:var(--mono);font-size:11px;color:var(--muted);}
-.proposta-campos{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
-.proposta-campos input,.proposta-campos select{font-family:var(--mono);font-size:12px;
-  background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:6px;
-  padding:7px 9px;}
-.proposta-campos input{flex:1;min-width:180px;}
-.proposta-acoes{display:flex;gap:8px;}
 .btn-confirmar{background:var(--accent);color:#0E1117;border:none;border-radius:7px;
   padding:8px 16px;font-family:var(--mono);font-size:12px;font-weight:600;cursor:pointer;}
 .btn-rejeitar{background:transparent;color:var(--red);border:1px solid var(--red);
   border-radius:7px;padding:8px 16px;font-family:var(--mono);font-size:12px;cursor:pointer;}
-.proposta.enviando{opacity:.5;pointer-events:none;}
 /* Ainda só no navegador: a cor avisa antes de a pessoa fechar a aba. */
 .export-btn.nao-sincronizado{opacity:1;border-color:var(--red);color:var(--red);}
 .parc-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
@@ -432,14 +416,6 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
   .parc-toolbar .search-box{flex:1 1 100%;min-width:0;}
   .filter-btn{padding:8px 12px;}
 
-  /* Alvo de toque: o cartão da fila de revisão tem cinco campos e dois
-     botões de decisão, e errar o botão aqui grava a decisão errada. */
-  .proposta-campos input,.proposta-campos select{font-size:13px;padding:9px 10px;}
-  .proposta-campos input{flex:1 1 100%;}
-  .proposta-campos select{flex:1 1 calc(50% - 5px);min-width:0;}
-  .proposta-acoes button{flex:1;padding:11px 0;}
-  .proposta-topo{flex-direction:column;align-items:flex-start;gap:4px;}
-
   .section-hdr{flex-wrap:wrap;gap:8px;}
   .modal-row{flex-direction:column;gap:10px;}
   .modal-btns{flex-direction:column-reverse;}
@@ -508,7 +484,6 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
     <div class="tab active" onclick="setTab('mes',this)">mês atual</div>
     <div class="tab" onclick="setTab('transacoes',this)">transações</div>
     <div class="tab" onclick="setTab('historico',this)">histórico</div>
-    <div class="tab" onclick="setTab('revisar',this)">revisar<span id="tab-revisar-badge" class="badge-fila"></span></div>
     <div class="tab" onclick="setTab('investimentos',this)">investimentos</div>
   </div>
 
@@ -595,18 +570,6 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
     </div>
 
     <!-- Fila de revisão: o que o bot propôs e ainda ninguém confirmou. -->
-    <div id="tab-revisar" class="tab-content">
-      <div class="card">
-        <div class="section-head">
-          <span class="section-title" id="revisar-resumo">fila de revisão</span>
-        </div>
-        <div id="revisar-vazio" style="color:var(--muted);font-family:var(--mono);font-size:13px;padding:16px 0">
-          Nada para revisar. O que você mandar para o bot no Telegram cai aqui como proposta.
-        </div>
-        <div id="revisar-lista"></div>
-      </div>
-    </div>
-
     <div id="tab-investimentos" class="tab-content">
       <div id="inv-vazio" class="coming-soon" style="display:none">
         <div>nenhuma posição registrada</div>
@@ -1016,7 +979,7 @@ function movimentosDeDados(dados){
 
 async function carregarTudo(){
   // A aba da Julia pode não existir ainda; o catch evita derrubar o painel todo.
-  const[txRows,juliaRows,splitRows,cfgL,compL,cfgJ,compJ,movL,movJ,saldos,ovRows,reembRows,pcRows,propRows,invRows,idxRows,contaRows]=await Promise.all([
+  const[txRows,juliaRows,splitRows,cfgL,compL,cfgJ,compJ,movL,movJ,saldos,ovRows,reembRows,pcRows,invRows,idxRows,contaRows]=await Promise.all([
     fetchSheet("Transações!A5:P1000"),
     fetchSheet("'Transações Julia'!A5:P1000").catch(()=>[]),
     fetchSheet("Config!C9").catch(()=>[]),
@@ -1030,7 +993,6 @@ async function carregarTudo(){
     fetchSheet(RANGE_OVERRIDES).catch(()=>[]),
     fetchSheet(RANGE_REEMBOLSOS).catch(()=>[]),
     fetchSheet(RANGE_PARCELAS_CASAL).catch(()=>[]),
-    fetchSheet(RANGE_PROPOSTAS).catch(()=>[]),
     fetchSheet(RANGE_INVEST).catch(()=>[]),
     fetchSheet(RANGE_INDICES).catch(()=>[]),
     fetchSheet(RANGE_CONTAS).catch(()=>[]),
@@ -1054,7 +1016,6 @@ async function carregarTudo(){
   overridesRemotos=linhasParaOverrides(ovRows);
   linhasRemotas=ovRows.length;
   parcelasCasal=lerParcelasCasal(pcRows);
-  propostas=lerPropostas(propRows);
   investimentos=lerInvestimentos(invRows);
   CDI_AA=taxaNum((idxRows[0]||[])[0]);
   POUP_AM=taxaNum((idxRows[1]||[])[0]);
@@ -1377,8 +1338,7 @@ function renderAll(){
   // posicionarMesInicial() move o mês sem passar por lá, o cabeçalho mentia até
   // o primeiro clique nas setas: mostrava 04/2026 exibindo dados de agosto.
   document.getElementById("month-label").textContent=mesStr(mesAtual.m,mesAtual.y);
-  renderizarMes();renderTransacoes();renderizarHistorico();renderRevisar();
-  renderInvestimentos();
+  renderizarMes();renderTransacoes();renderizarHistorico();renderInvestimentos();
 }
 
 // ── LANÇAMENTOS ───────────────────────────────────────────
@@ -2128,17 +2088,9 @@ function serieComparada(posicoes,fimNum,maxPontos){
 }
 
 
-// ── FILA DE REVISÃO ───────────────────────────────────────
-// O bot do Telegram lê o print e escreve aqui uma linha *proposta*; ela só
-// vira gasto depois que alguém confirma nesta tela. É a diferença entre o
-// pipeline adivinhar e o titular decidir: nada entra na base sem passar por
-// uma pessoa, e o que passou fica com nome e hora de quem passou.
-const ABA_PROPOSTAS="Propostas";
-const RANGE_PROPOSTAS="Propostas!A2:Q500";
-const COLS_PROPOSTAS=["id","criado_em","perfil","origem","arquivo","data","banco",
-  "produto","descricao","valor","direcao","categoria","confianca","status",
-  "revisado_por","revisado_em","observacao"];
-let propostas=[];
+// A revisão de proposta vive inteira no bot do Telegram: é onde o print
+// chega, e trocar de aparelho para confirmar era um passo a mais sem ganho.
+// O painel lê a base já confirmada.
 const COLS_OVERRIDES=["perfil","id","data","banco","produto","valor",
   "desc_original","desc_novo","cat_original","cat_nova","fixo","editado_em"];
 let overridesRemotos={};      // o que a planilha confirmou
@@ -2348,120 +2300,6 @@ function alternarFixo(id){
 //
 // Exporta os dois perfis de uma vez. Cada linha leva o lançamento original
 // junto, para a regra poder ser escrita sem cruzar nada com a base depois.
-// ── FILA DE REVISÃO ───────────────────────────────────────
-function lerPropostas(linhas){
-  return(linhas||[]).map((r,i)=>({
-    linhaPlanilha:i+2,   // A1 é cabeçalho
-    id:String((r||[])[0]||""),criadoEm:r[1]||"",perfil:r[2]||"",
-    origem:r[3]||"",arquivo:r[4]||"",data:r[5]||"",banco:r[6]||"",
-    produto:r[7]||"conta",desc:r[8]||"",valor:valorBRL(r[9]),
-    direcao:r[10]||"Débito",cat:r[11]||"Não classificado",
-    confianca:parseFloat(String(r[12]||"").replace(",","."))||0,
-    status:(r[13]||"pendente").toLowerCase(),
-    revisadoPor:r[14]||"",revisadoEm:r[15]||"",obs:r[16]||"",
-  })).filter(p=>p.id&&p.id!=="id");
-}
-
-const propostasPendentes=()=>propostas.filter(p=>
-  p.status==="pendente"&&(!p.perfil||p.perfil===perfil));
-
-const opcoesSelect=(lista,atual)=>lista.map(v=>
-  `<option value="${esc(v)}"${v===atual?" selected":""}>${esc(v)}</option>`).join("");
-
-function renderRevisar(){
-  const fila=propostasPendentes();
-  const badge=document.getElementById("tab-revisar-badge");
-  if(badge){badge.textContent=fila.length||"";badge.classList.toggle("tem",!!fila.length);}
-  const vazio=document.getElementById("revisar-vazio");
-  const lista=document.getElementById("revisar-lista");
-  const resumo=document.getElementById("revisar-resumo");
-  if(!lista)return;
-  if(resumo)resumo.textContent=fila.length
-    ?`fila de revisão · ${fila.length} aguardando`:"fila de revisão";
-  if(vazio)vazio.style.display=fila.length?"none":"block";
-  const cats=[...new Set(CATEGORIAS_EDITAVEIS)];
-  lista.innerHTML=fila.map(p=>{
-    // A confiança do extrator aparece: uma proposta de leitura duvidosa
-    // merece um olhar mais demorado do que uma que veio limpa.
-    const conf=p.confianca?`${Math.round(p.confianca*100)}% de confiança`:"sem confiança declarada";
-    return`<div class="proposta" data-id="${esc(p.id)}">
-      <div class="proposta-topo">
-        <span class="proposta-valor">${p.direcao==="Crédito"?"+":"−"} ${fmtCentavos(p.valor)}</span>
-        <span class="proposta-meta">${esc(p.data)} · ${esc(p.banco)} · ${esc(p.origem||"—")} · ${conf}</span>
-      </div>
-      <div class="proposta-campos">
-        <input data-campo="desc" value="${esc(p.desc)}" placeholder="descrição">
-        <select data-campo="cat">${opcoesSelect(cats,p.cat)}</select>
-        <select data-campo="direcao">${opcoesSelect(["Débito","Crédito"],p.direcao)}</select>
-        <select data-campo="produto">${opcoesSelect(["conta","cartao"],p.produto)}</select>
-        <select data-campo="perfil">${opcoesSelect(["Lucas","Julia"],p.perfil)}</select>
-      </div>
-      <div class="proposta-acoes">
-        <button class="btn-confirmar" data-acao="confirmar">confirmar</button>
-        <button class="btn-rejeitar" data-acao="rejeitar">rejeitar</button>
-      </div>
-    </div>`;
-  }).join("");
-  lista.querySelectorAll(".proposta").forEach(cartao=>{
-    const id=cartao.dataset.id;
-    // O sinal fica no topo do cartão, longe do select que o controla. Sem isto
-    // dá para deixar "Crédito" escolhido com um "−" grande logo acima — e a
-    // pessoa confirma acreditando no sinal, que é o que ela olha primeiro.
-    const sel=cartao.querySelector('[data-campo="direcao"]');
-    const p=propostas.find(x=>x.id===id);
-    sel.addEventListener("change",()=>{
-      cartao.querySelector(".proposta-valor").textContent=
-        `${sel.value==="Crédito"?"+":"−"} ${fmtCentavos(p.valor)}`;
-    });
-    cartao.querySelector('[data-acao="confirmar"]')
-      .addEventListener("click",()=>decidirProposta(id,"confirmada",cartao));
-    cartao.querySelector('[data-acao="rejeitar"]')
-      .addEventListener("click",()=>decidirProposta(id,"rejeitada",cartao));
-  });
-}
-
-async function decidirProposta(id,decisao,cartao){
-  const p=propostas.find(x=>x.id===id);
-  if(!p)return;
-  p.desc=cartao.querySelector('[data-campo="desc"]').value.trim()||p.desc;
-  p.cat=cartao.querySelector('[data-campo="cat"]').value;
-  p.direcao=cartao.querySelector('[data-campo="direcao"]').value;
-  p.produto=cartao.querySelector('[data-campo="produto"]').value;
-  p.perfil=cartao.querySelector('[data-campo="perfil"]').value;
-  p.status=decisao;
-  p.revisadoPor=perfil;
-  p.revisadoEm=new Date().toISOString();
-  cartao.classList.add("enviando");
-  try{
-    await gravarProposta(p);
-    renderRevisar();
-  }catch(erro){
-    // Desfaz na tela: deixar como decidida sem ter gravado faria a pessoa
-    // achar que resolveu, e a proposta reapareceria no próximo carregamento.
-    p.status="pendente";p.revisadoPor="";p.revisadoEm="";
-    cartao.classList.remove("enviando");
-    alert("Não deu para gravar na planilha: "+((erro&&erro.message)||erro));
-  }
-}
-
-// Reescreve a linha inteira da proposta, mas só depois de reencontrá-la pelo
-// id: se o bot tiver acrescentado propostas no intervalo, o índice de linha
-// que veio do carregamento já não vale.
-async function gravarProposta(p){
-  if(window.__HARNESS_DATA__)return;
-  const linhas=await sheetsGet(RANGE_PROPOSTAS);
-  const idx=linhas.findIndex(r=>String((r||[])[0]||"")===p.id);
-  if(idx<0)throw new Error("a proposta sumiu da planilha");
-  const atual=linhas[idx]||[];
-  const nova=COLS_PROPOSTAS.map((_,i)=>String(atual[i]??""));
-  nova[2]=p.perfil; nova[7]=p.produto; nova[8]=p.desc;
-  nova[10]=p.direcao; nova[11]=p.cat; nova[13]=p.status;
-  nova[14]=p.revisadoPor; nova[15]=p.revisadoEm;
-  const linha=idx+2;
-  await sheetsPut(`${ABA_PROPOSTAS}!A${linha}:Q${linha}`,[nova]);
-  p.linhaPlanilha=linha;
-}
-
 function edicoesPendentes(){return Object.keys(getOverrides()).length;}
 
 // O botão diz duas coisas diferentes: quantas correções existem, e se alguma
