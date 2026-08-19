@@ -1605,7 +1605,7 @@ const RANGE_PARCELAS_CASAL="Config!B63:E80";
 // do CDI" e 12,5 para "12,5% ao ano" prefixado. `valor_manual`, quando
 // preenchido, manda sobre o cálculo — é a saída para renda variável, onde
 // nenhuma fórmula acerta o preço.
-const RANGE_INVEST="Investimentos!A2:N300";
+const RANGE_INVEST="Investimentos!A2:O300";
 // Cotação de ação, FII e ETF. A planilha busca com GOOGLEFINANCE e o painel
 // só lê — sem chave, sem CORS, sem custo. Uma linha por ativo, e não por
 // aporte: três compras do mesmo FII compartilham o mesmo preço.
@@ -1710,8 +1710,60 @@ function lerInvestimentos(linhas){
       ticker:String(r[11]||"").trim().toUpperCase(),
       quantidade:taxaNum(r[12]),
       atualizadoEm:String(r[13]||"").trim(),
+      // Vazio é compra: a esmagadora maioria das linhas é aporte, e exigir a
+      // palavra em todas seria atrito sem ganho.
+      operacao:String(r[14]||"").trim().toLowerCase()==="venda"?"venda":"compra",
     };
   }).filter(i=>i.produto&&dataOrd(i.data)&&i.aplicado>0);
+}
+
+// Venda e resgate não viram linha negativa nem apagam o aporte: viram uma
+// linha própria, e a posição encolhe proporcionalmente.
+//
+// A alternativa seria abater da compra mais antiga, como o Fisco faz para
+// apurar ganho. Aqui a pergunta é "quanto eu tenho", não "quanto devo de
+// imposto", e proporcional preserva o que importa: cada aporte continua
+// rendendo desde a **sua** data. Abater tudo da compra mais antiga mudaria a
+// data de início do que sobrou e o rendimento sairia errado.
+//
+// A chave é o ticker quando existe, senão instituição + produto — é o que
+// junta "comprei HGLG11" com "vendi HGLG11" sem depender do texto bater.
+const chaveInvest=i=>[i.perfil,i.ticker||(i.instituicao+"|"+i.produto)].join("::");
+
+function aplicarVendas(lista){
+  const vendido={};
+  lista.filter(i=>i.operacao==="venda").forEach(v=>{
+    const k=chaveInvest(v);
+    const a=vendido[k]||(vendido[k]={qtd:0,valor:0,recebido:0});
+    a.qtd+=v.quantidade; a.valor+=v.aplicado; a.recebido+=v.aplicado;
+  });
+
+  const compras=lista.filter(i=>i.operacao!=="venda");
+  const totais={};
+  compras.forEach(c=>{
+    const k=chaveInvest(c);
+    const a=totais[k]||(totais[k]={qtd:0,valor:0});
+    a.qtd+=c.quantidade; a.valor+=c.aplicado;
+  });
+
+  const abertas=[];
+  let realizado=0, encerradas=0;
+  compras.forEach(c=>{
+    const k=chaveInvest(c);
+    const v=vendido[k];
+    if(!v){abertas.push(c);return;}
+    const t=totais[k];
+    // Ticker mede em cota; o resto mede em dinheiro. Misturar os dois daria
+    // fração errada justamente quando o preço subiu — que é quando se vende.
+    const fracao=c.ticker&&t.qtd>0
+      ? Math.max(0,1-v.qtd/t.qtd)
+      : Math.max(0,1-v.valor/t.valor);
+    realizado+=(v.recebido-t.valor*(1-fracao))*(c.aplicado/t.valor);
+    if(fracao<=0.0001){encerradas++;return;}
+    abertas.push({...c,aplicado:c.aplicado*fracao,quantidade:c.quantidade*fracao,
+      valorManual:c.valorManual*fracao,parcial:fracao<0.9999});
+  });
+  return{abertas,realizado,encerradas};
 }
 
 function lerCotacoes(linhas){
@@ -1938,7 +1990,8 @@ function renderFluxoInvest(temPosicao){
 function renderInvestimentos(){
   const lista=investDoPerfil();
   const hoje=new Date();
-  const posicoes=lista.map(i=>posicaoHoje(i,hoje));
+  const {abertas,realizado,encerradas}=aplicarVendas(lista);
+  const posicoes=abertas.map(i=>posicaoHoje(i,hoje));
   const vazio=document.getElementById("inv-vazio");
   const conteudo=document.getElementById("inv-content");
   if(!vazio||!conteudo)return;
@@ -1975,7 +2028,14 @@ function renderInvestimentos(){
       <div class="kpi-sub">${pct===null?"—":pctBR(pct)+" no período"}</div></div>
     <div class="kpi"><div class="kpi-lbl">se resgatar hoje</div>
       <div class="kpi-val">${fmtInv(liquido)}</div>
-      <div class="kpi-sub">${imposto>0?"−"+fmtInv(imposto)+" de IR e IOF":"sem imposto a pagar"}</div></div>`;
+      <div class="kpi-sub">${imposto>0?"−"+fmtInv(imposto)+" de IR e IOF":"sem imposto a pagar"}</div></div>`+
+    // Só aparece quando existe venda. Resultado realizado é dinheiro que já
+    // saiu do risco: misturá-lo com o que ainda está aplicado esconderia as
+    // duas coisas.
+    (realizado!==0||encerradas?`
+    <div class="kpi"><div class="kpi-lbl">já realizado</div>
+      <div class="kpi-val ${sinal(realizado)}">${realizado>=0?"+":"−"}${fmtInv(Math.abs(realizado))}</div>
+      <div class="kpi-sub">${encerradas?`${encerradas} posiç${encerradas===1?"ão encerrada":"ões encerradas"}`:"em vendas parciais"}</div></div>`:"");
 
   // A tela diz de onde veio o número. "Série do BC" e "taxa aproximada" são
   // confiabilidades diferentes e não podem ter a mesma aparência.
@@ -2002,10 +2062,11 @@ function renderInvestimentos(){
       // A etiqueta diz de onde veio o número. "manual · 47 dias" é a única
       // informação que impede alguém de somar um preço de dois meses atrás
       // como se fosse o de hoje.
-      const marca=i.fonte==="mercado"?' <span class="inv-tag">cotação</span>'
+      const parcial=i.parcial?' <span class="inv-tag">parcial</span>':"";
+      const marca=parcial+(i.fonte==="mercado"?' <span class="inv-tag">cotação</span>'
         :i.fonte==="manual"?` <span class="inv-tag inv-velho">manual · ${i.idade}d</span>`
         :i.fonte==="sem fonte"?' <span class="inv-tag inv-velho">sem fonte</span>'
-        :(i.exato?"":' <span class="inv-tag">aprox.</span>');
+        :(i.exato?"":' <span class="inv-tag">aprox.</span>'));
       const r=referencias(i.aplicado,diaNum(i.data),fimNum,i.dias);
       const meuLiq=i.liquido-i.aplicado;
       const vsCdi=meuLiq-r.cdi, vsPoup=meuLiq-r.poupanca;
