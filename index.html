@@ -349,6 +349,37 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
 .inv-liq{color:var(--accent2);}
 .inv-tag{font-family:var(--mono);font-size:9px;color:var(--muted);border:1px solid var(--border2);
   border-radius:4px;padding:1px 5px;vertical-align:middle;}
+
+/* Tabela protagonista: tudo de uma posição numa linha só. Rola de lado no
+   celular em vez de espremer coluna até virar reticência. */
+.inv-card-tabela{padding:0;}
+.inv-rolagem{overflow-x:auto;}
+.inv-tabela{width:100%;border-collapse:collapse;font-size:12px;min-width:760px;}
+.inv-tabela th{font-family:var(--mono);font-size:10px;font-weight:400;color:var(--muted);
+  text-transform:uppercase;letter-spacing:0.06em;text-align:right;padding:11px 9px;
+  border-bottom:1px solid var(--border2);white-space:nowrap;}
+.inv-tabela th.esq{text-align:left;padding-left:16px;}
+.inv-tabela th.destaque{color:var(--accent2);padding-right:16px;}
+.inv-tabela td{text-align:right;padding:10px 9px;border-bottom:1px solid var(--border);
+  font-family:var(--mono);font-size:12px;white-space:nowrap;}
+.inv-tabela td.esq{text-align:left;padding-left:16px;font-family:var(--sans);font-size:13px;}
+.inv-tabela td.destaque{padding-right:16px;color:var(--accent2);}
+.inv-tabela tr:last-child td{border-bottom:none;}
+.inv-sub{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px;
+  text-transform:uppercase;letter-spacing:0.05em;}
+.inv-nota{font-size:11px;color:var(--muted);padding:10px 16px 12px;border-top:1px solid var(--border2);}
+
+.inv-rodape{display:grid;grid-template-columns:minmax(260px,1fr) 2fr;gap:12px;}
+.inv-rodape-titulo{font-family:var(--mono);font-size:10px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;}
+.inv-pizza-linha{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.inv-fatia{transition:opacity 0.15s;}
+.inv-serie-card svg{width:100%;height:150px;display:block;}
+.inv-serie-legenda{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px;
+  font-family:var(--mono);font-size:11px;color:var(--muted);}
+.inv-serie-legenda i{display:inline-block;width:16px;height:2px;vertical-align:middle;
+  margin-right:7px;border-radius:1px;}
+@media(max-width:900px){.inv-rodape{grid-template-columns:1fr;}}
 .inv-linha:last-child{border-bottom:none;}
 .inv-ativo-meta{font-family:var(--mono);font-size:10px;color:var(--muted);
   text-transform:uppercase;letter-spacing:0.06em;margin-top:2px;}
@@ -595,20 +626,39 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
       <div id="inv-content" style="display:none">
         <div class="kpi-grid inv-kpis"></div>
         <div class="section">
-          <div class="section-hdr"><span class="section-title">composição por classe</span>
+          <div class="section-hdr"><span class="section-title">por ativo</span>
             <span class="inv-data" id="inv-data"></span></div>
-          <div class="card">
-            <div class="stack-bars" id="inv-stack"></div>
-            <div class="stack-legend" id="inv-legenda"></div>
+          <div class="card inv-card-tabela">
+            <div class="inv-rolagem">
+              <table class="inv-tabela">
+                <thead><tr>
+                  <th class="esq">produto</th><th>data</th><th>aplicado</th><th>hoje</th>
+                  <th>rendeu</th><th>no cdi</th><th>vs cdi</th><th>vs poup.</th>
+                  <th class="destaque">sacar hoje</th>
+                </tr></thead>
+                <tbody id="inv-ativos"></tbody>
+              </table>
+            </div>
+            <div class="inv-nota" id="inv-nota"></div>
           </div>
         </div>
         <div class="section">
-          <div class="section-hdr"><span class="section-title">por ativo</span></div>
-          <div class="card"><div id="inv-ativos"></div></div>
-        </div>
-        <div class="section" id="inv-comparativo-area" style="display:none">
-          <div class="section-hdr"><span class="section-title">o mesmo dinheiro, no mesmo tempo</span></div>
-          <div class="card"><div id="inv-comparativo"></div></div>
+          <div class="inv-rodape">
+            <div class="card inv-pizza-card">
+              <div class="inv-rodape-titulo">composição</div>
+              <div class="inv-pizza-linha">
+                <svg id="inv-pizza" viewBox="0 0 120 120" width="120" height="120"
+                     role="img" aria-label="composição da carteira por classe"></svg>
+                <div id="inv-legenda"></div>
+              </div>
+            </div>
+            <div class="card inv-serie-card" id="inv-serie-area">
+              <div class="inv-rodape-titulo">carteira</div>
+              <svg id="inv-serie" viewBox="0 0 480 150" preserveAspectRatio="none"
+                   role="img" aria-label="evolução da carteira comparada ao cdi e à poupança"></svg>
+              <div id="inv-serie-legenda" class="inv-serie-legenda"></div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="section" id="inv-fluxo-area" style="display:none">
@@ -1796,31 +1846,6 @@ function posicaoHoje(inv,hoje){
     estimado:!calculado,exato:calculado||exato,tributavel:rf};
 }
 
-// O mesmo dinheiro, no mesmo tempo, nas duas referências. É o que responde
-// "valeu a pena?" — sem isso, 115% do CDI é só um número no papel.
-function comparativo(posicoes,hoje){
-  const fimNum=diaNum(
-    `${String(hoje.getDate()).padStart(2,"0")}/${String(hoje.getMonth()+1).padStart(2,"0")}/${hoje.getFullYear()}`);
-  let meu=0,cdi=0,poup=0,base=0;
-  posicoes.forEach(p=>{
-    const iniNum=diaNum(p.data);
-    const dias=p.dias;
-    base+=p.aplicado;
-    meu+=p.liquido-p.aplicado;
-
-    const rCdi=p.aplicado*
-      fatorRendimento({indexador:"CDI",taxa:100},iniNum,fimNum,dias).fator-p.aplicado;
-    // Comparar bruto com líquido enganaria a favor da poupança, que é isenta.
-    // O CDI de referência leva o mesmo IR e IOF que a posição real levaria.
-    const iof=rCdi>0?rCdi*(iofPct(dias)/100):0;
-    const ir=rCdi-iof>0?(rCdi-iof)*(irPct(dias)/100):0;
-    cdi+=rCdi-iof-ir;
-
-    poup+=p.aplicado*
-      fatorRendimento({indexador:"POUPANCA"},iniNum,fimNum,dias).fator-p.aplicado;
-  });
-  return{base,meu,cdi,poup};
-}
 
 const CORES_CLASSE=["var(--accent)","var(--blue)","var(--purple)","var(--amber)",
   "var(--accent2)","var(--red)"];
@@ -1951,17 +1976,11 @@ function renderInvestimentos(){
     :(CDI_AA?`taxa aproximada da Config · CDI ${CDI_AA.toFixed(2).replace(".",",")}% a.a.`
             :"sem CDI: série do BC fora do ar e Config vazia");
 
-  const porClasse={};
-  posicoes.forEach(i=>{porClasse[i.classe]=(porClasse[i.classe]||0)+i.bruto;});
-  const classes=Object.entries(porClasse).sort((a,b)=>b[1]-a[1]);
-  document.getElementById("inv-stack").innerHTML=classes.map(([,v],n)=>
-    `<div class="stack-seg" style="width:${bruto?(v/bruto)*100:0}%;background:${CORES_CLASSE[n%CORES_CLASSE.length]}"></div>`).join("");
-  document.getElementById("inv-legenda").innerHTML=classes.map(([c,v],n)=>
-    `<span class="stack-leg-item"><span style="width:8px;height:8px;border-radius:2px;background:${CORES_CLASSE[n%CORES_CLASSE.length]}"></span>${esc(c)} ${bruto?((v/bruto)*100).toFixed(0):0}%</span>`).join("");
+  const fimNum=diaNum(
+    `${String(hoje.getDate()).padStart(2,"0")}/${String(hoje.getMonth()+1).padStart(2,"0")}/${hoje.getFullYear()}`);
 
   document.getElementById("inv-ativos").innerHTML=posicoes
     .sort((a,b)=>b.bruto-a.bruto).map(i=>{
-      const p=i.aplicado>0?(i.rend/i.aplicado)*100:null;
       const tx=String(i.taxa).replace(".",",");
       const indexa=i.indexador==="CDI"?`${tx}% do CDI`
         :i.indexador==="SELIC"?`${tx}% da Selic`
@@ -1970,53 +1989,144 @@ function renderInvestimentos(){
         :i.indexador==="POUPANCA"?"poupança":"valor de mercado";
       const marca=i.estimado?(i.exato?"":' <span class="inv-tag">aprox.</span>')
         :' <span class="inv-tag">manual</span>';
-      return`<div class="inv-linha">
-        <div><div>${esc(i.produto)}${marca}</div>
-          <div class="inv-ativo-meta">${esc(i.instituicao||"—")} · ${esc(i.classe)} · ${esc(indexa)} · ${i.dias}d${i.obs?" · "+esc(i.obs):""}</div></div>
-        <div class="inv-num" style="color:var(--muted)">${fmtInv(i.aplicado)}</div>
-        <div class="inv-num">${fmtInv(i.bruto)}</div>
-        <div class="inv-ganho ${p===null?"":sinal(i.rend)}">${p===null?"—":pctBR(p)}</div>
-        <div class="inv-num inv-liq">${fmtInv(i.liquido)}<div class="inv-ativo-meta">${
-          i.tributavel?`IR ${String(irPct(i.dias)).replace(".",",")}%${iofPct(i.dias)?` · IOF ${iofPct(i.dias)}%`:""}`:"sem imposto estimado"}</div></div>
-      </div>`;}).join("");
+      const r=referencias(i.aplicado,diaNum(i.data),fimNum,i.dias);
+      const meuLiq=i.liquido-i.aplicado;
+      const vsCdi=meuLiq-r.cdi, vsPoup=meuLiq-r.poupanca;
+      const num=(v,cls)=>`<td class="${cls||""}">${v>=0?"":"−"}${fmtInv(Math.abs(v))}</td>`;
+      return`<tr>
+        <td class="esq">${esc(i.produto)}${marca}
+          <div class="inv-sub">${esc(i.instituicao||"—")} · ${esc(indexa)} · ${i.dias}d</div></td>
+        <td style="color:var(--muted)">${esc(i.data)}</td>
+        <td style="color:var(--muted)">${fmtInv(i.aplicado)}</td>
+        <td>${fmtInv(i.bruto)}</td>
+        ${num(i.rend,sinal(i.rend))}
+        <td style="color:var(--muted)">${fmtInv(r.cdiBruto)}</td>
+        ${num(vsCdi,sinal(vsCdi))}
+        ${num(vsPoup,sinal(vsPoup))}
+        <td class="destaque">${fmtInv(i.liquido)}
+          <div class="inv-sub">${i.tributavel
+            ?`IR ${String(irPct(i.dias)).replace(".",",")}%${iofPct(i.dias)?` · IOF ${iofPct(i.dias)}%`:""}`
+            :"isento"}</div></td>
+      </tr>`;}).join("");
 
-  renderComparativo(posicoes,hoje);
+  const temManual=posicoes.some(i=>!i.estimado);
+  document.getElementById("inv-nota").innerHTML=
+    `<b>rendeu</b> e <b>no cdi</b> são brutos; <b>vs cdi</b> e <b>vs poup.</b> comparam
+     o líquido, já com IR e IOF dos dois lados — a poupança é isenta.`+
+    (temManual?" Posição com valor manual não tem histórico, então entra no gráfico pelo aplicado.":"");
+
+  renderPizza(posicoes,bruto);
+  renderSerie(posicoes,fimNum);
 }
 
-// "Valeu a pena?" não se responde com o rendimento sozinho — só comparando o
-// mesmo dinheiro, no mesmo tempo, nas alternativas óbvias.
-function renderComparativo(posicoes,hoje){
-  const area=document.getElementById("inv-comparativo-area");
-  if(!area)return;
-  if(!CDI_AA||!POUP_AM){
-    area.style.display="block";
-    document.getElementById("inv-comparativo").innerHTML=
-      `<div class="inv-ativo-meta" style="text-transform:none;letter-spacing:0">
-        Para comparar com CDI e poupança, preencha na aba <b>Config</b>:
-        <b>B83</b> = CDI ao ano (ex.: 14,90) e <b>B84</b> = poupança ao mês
-        (ex.: 0,5). Sem isso o painel não chuta taxa.</div>`;
-    return;
-  }
+function renderPizza(posicoes,bruto){
+  const porClasse={};
+  posicoes.forEach(i=>{porClasse[i.classe]=(porClasse[i.classe]||0)+i.bruto;});
+  const classes=Object.entries(porClasse).sort((a,b)=>b[1]-a[1]);
+  const R=44,C=2*Math.PI*R;
+  let acumulado=0;
+  document.getElementById("inv-pizza").innerHTML=
+    `<circle cx="60" cy="60" r="${R}" fill="none" stroke="var(--bg3)" stroke-width="17"/>`+
+    classes.map(([,v],n)=>{
+      const frac=bruto?v/bruto:0;
+      const seg=`<circle class="inv-fatia" cx="60" cy="60" r="${R}" fill="none"
+        stroke="${CORES_CLASSE[n%CORES_CLASSE.length]}" stroke-width="17"
+        stroke-dasharray="${(frac*C).toFixed(2)} ${(C-frac*C).toFixed(2)}"
+        stroke-dashoffset="${(-acumulado*C).toFixed(2)}"
+        transform="rotate(-90 60 60)"></circle>`;
+      acumulado+=frac;
+      return seg;
+    }).join("");
+  document.getElementById("inv-legenda").innerHTML=classes.map(([c,v],n)=>
+    `<div class="stack-leg-item" style="margin-bottom:6px">
+      <span style="width:9px;height:9px;border-radius:2px;background:${CORES_CLASSE[n%CORES_CLASSE.length]}"></span>
+      ${esc(c)} · ${bruto?((v/bruto)*100).toFixed(0):0}%</div>`).join("");
+}
+
+// Três linhas no mesmo eixo. A escala parte do menor valor da janela, não de
+// zero: com R$ 15 mil aplicados e R$ 280 de diferença entre as curvas, um eixo
+// começando em zero deixaria as três coladas e o gráfico não diria nada.
+function renderSerie(posicoes,fimNum){
+  const area=document.getElementById("inv-serie-area");
+  const pontos=serieComparada(posicoes,fimNum,60);
+  if(pontos.length<3){area.style.display="none";return;}
   area.style.display="block";
-  const c=comparativo(posicoes,hoje);
-  const linhas=[
-    ["o seu",c.meu,"var(--accent)"],
-    ["100% do CDI",c.cdi,"var(--blue)"],
-    ["poupança",c.poup,"var(--amber)"],
-  ];
-  const teto=Math.max(...linhas.map(l=>Math.abs(l[1])),0.01);
-  const vsCdi=c.meu-c.cdi, vsPoup=c.meu-c.poup;
-  document.getElementById("inv-comparativo").innerHTML=
-    linhas.map(([nome,v,cor])=>
-      `<div class="inv-evo-linha"><span style="min-width:96px;color:var(--muted)">${nome}</span>
-        <span class="inv-evo-barra"><span class="inv-evo-fill" style="width:${(Math.abs(v)/teto)*100}%;background:${cor}"></span></span>
-        <span style="min-width:96px;text-align:right">${v>=0?"+":"−"}${fmtInv(Math.abs(v))}</span></div>`).join("")+
-    `<div class="inv-ativo-meta" style="margin-top:10px;text-transform:none;letter-spacing:0">
-      Líquido de IR e IOF, sobre ${fmtInv(c.base)} aplicados. Contra o CDI cheio
-      você está ${vsCdi>=0?"à frente":"atrás"} em ${fmtInv(Math.abs(vsCdi))}; contra a
-      poupança, ${vsPoup>=0?"à frente":"atrás"} em ${fmtInv(Math.abs(vsPoup))}.
-      A poupança é isenta de IR e só credita no aniversário do mês.</div>`;
+
+  const todos=pontos.flatMap(p=>[p.carteira,p.cdi,p.poup]);
+  const min=Math.min(...todos),max=Math.max(...todos);
+  const alcance=(max-min)||1;
+  const x=i=>(i/(pontos.length-1))*480;
+  const y=v=>142-((v-min)/alcance)*128;
+  const linha=(campo,cor,traco)=>
+    `<polyline points="${pontos.map((p,i)=>`${x(i).toFixed(1)},${y(p[campo]).toFixed(1)}`).join(" ")}"
+      fill="none" stroke="${cor}" stroke-width="${traco?2:2.5}"
+      ${traco?`stroke-dasharray="${traco}"`:""} vector-effect="non-scaling-stroke"/>`;
+
+  document.getElementById("inv-serie").innerHTML=
+    [130,86,42].map(l=>`<line x1="0" y1="${l}" x2="480" y2="${l}" stroke="var(--border)" stroke-width="1" vector-effect="non-scaling-stroke"/>`).join("")+
+    linha("poup","var(--muted)","2 4")+
+    linha("cdi","var(--blue)","5 4")+
+    linha("carteira","var(--accent)","")+
+    `<circle cx="${x(pontos.length-1).toFixed(1)}" cy="${y(pontos[pontos.length-1].carteira).toFixed(1)}" r="4" fill="var(--accent)"/>`;
+
+  const fim=pontos[pontos.length-1];
+  const ap=posicoes.reduce((s,i)=>s+i.aplicado,0);
+  // Rendimento bruto, e a legenda diz isso. A tabela compara o líquido, e sem
+  // a palavra "bruto" aqui uma LCI isenta apareceria perdendo do CDI no
+  // gráfico e ganhando na tabela — os dois certos, e o painel parecendo errado.
+  document.getElementById("inv-serie-legenda").innerHTML=
+    `<span><i style="background:var(--accent)"></i>sua carteira · ${fmtInv(fim.carteira-ap)}</span>
+     <span><i style="background:var(--blue)"></i>100% do cdi · ${fmtInv(fim.cdi-ap)}</span>
+     <span><i style="background:var(--muted)"></i>poupança · ${fmtInv(fim.poup-ap)}</span>
+     <span style="color:var(--border2)">rendimento bruto</span>`;
 }
+
+// Quanto o mesmo dinheiro, no mesmo prazo, teria rendido nas duas referências.
+// Devolve rendimento **líquido** nas duas: o CDI leva IR e IOF como qualquer
+// renda fixa, e a poupança é isenta. Comparar o líquido de um com o bruto do
+// outro seria propaganda, não comparação.
+function referencias(aplicado,iniNum,fimNum,dias){
+  const bCdi=aplicado*fatorRendimento({indexador:"CDI",taxa:100},iniNum,fimNum,dias).fator-aplicado;
+  const iof=bCdi>0?bCdi*(iofPct(dias)/100):0;
+  const ir=bCdi-iof>0?(bCdi-iof)*(irPct(dias)/100):0;
+  return{
+    cdiBruto:bCdi,
+    cdi:bCdi-iof-ir,
+    poupanca:aplicado*fatorRendimento({indexador:"POUPANCA"},iniNum,fimNum,dias).fator-aplicado,
+  };
+}
+
+// A carteira dia a dia, com o CDI e a poupança recebendo os mesmos aportes nas
+// mesmas datas. Sem isso a comparação seria contra um investidor imaginário
+// que aportou tudo no primeiro dia.
+//
+// Amostra até `maxPontos` datas em vez de percorrer a série inteira: um
+// gráfico de 480px não distingue 700 pontos, e `fatorRendimento` refiltra a
+// série a cada chamada — o custo cresceria com o quadrado do histórico.
+function serieComparada(posicoes,fimNum,maxPontos){
+  const dias=(series.CDI||[]).map(o=>o.d).filter(d=>d<=fimNum);
+  if(dias.length<3||!posicoes.length)return[];
+  const passo=Math.max(1,Math.ceil(dias.length/(maxPontos||60)));
+  const amostra=dias.filter((d,i)=>i%passo===0||i===dias.length-1);
+
+  return amostra.map(d=>{
+    let carteira=0,cdi=0,poup=0;
+    posicoes.forEach(p=>{
+      const ini=diaNum(p.data);
+      if(d<ini)return;   // dinheiro ainda não estava aplicado
+      const corridos=Math.round((dataObj(String(d).slice(6,8)+"/"+String(d).slice(4,6)+"/"+String(d).slice(0,4))-dataObj(p.data))/(24*3600*1000));
+      // Posição de valor manual não tem histórico: fica no aplicado até hoje,
+      // porque inventar a curva de uma ação seria desenhar dado que não existe.
+      carteira+=p.valorManual>0?p.aplicado
+        :p.aplicado*fatorRendimento(p,ini,d,corridos).fator;
+      const r=referencias(p.aplicado,ini,d,corridos);
+      cdi+=p.aplicado+r.cdiBruto;
+      poup+=p.aplicado+r.poupanca;
+    });
+    return{d,carteira,cdi,poup};
+  });
+}
+
 
 // ── FILA DE REVISÃO ───────────────────────────────────────
 // O bot do Telegram lê o print e escreve aqui uma linha *proposta*; ela só
