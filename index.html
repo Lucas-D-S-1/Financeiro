@@ -106,7 +106,9 @@ main{padding:28px 32px;max-width:1260px;margin:0 auto;}
 .section-title{font-family:var(--mono);font-size:11px;letter-spacing:0.15em;color:var(--muted);text-transform:uppercase;}
 
 /* ── KPI GRID ── */
-.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:28px;}
+/* Quatro, não cinco. O quinto card era o saldo, que agora tem linha própria —
+   e com cinco o celular fechava 2+2+1, com um card órfão na última fileira. */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px;}
 .kpi-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:18px;transition:border-color 0.2s;}
 .kpi-card:hover{border-color:var(--border2);}
 .kpi-label{font-size:10px;font-family:var(--mono);letter-spacing:0.12em;color:var(--muted);text-transform:uppercase;margin-bottom:10px;}
@@ -119,12 +121,37 @@ main{padding:28px 32px;max-width:1260px;margin:0 auto;}
 .kpi-badge{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;margin-top:6px;}
 .kpi-badge.warn{background:rgba(240,168,74,0.12);color:var(--amber);}
 
-/* ── DECOMP ── */
-.decomp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px;}
-.decomp-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px;}
-.decomp-label{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:7px;}
-.decomp-value{font-size:17px;font-weight:300;}
-.decomp-sub{font-size:11px;color:var(--muted);margin-top:3px;}
+/* ── SALDO FINAL ──
+   Largura cheia porque é a resposta, não mais um número entre outros: os
+   quatro de cima são as parcelas da conta e este é o resultado dela. */
+.saldo-row{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);
+  padding:18px;margin-bottom:28px;display:flex;align-items:baseline;
+  justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.saldo-row .kpi-label{margin-bottom:0;}
+.saldo-row .kpi-value{font-size:28px;}
+.saldo-esq{display:flex;flex-direction:column;gap:6px;}
+
+/* ── ORIGEM DO CARTÃO ──
+   Chips sob o nome da categoria: respondem "onde eu gastei isso" sem abrir a
+   linha. Meio-termo consciente — uma visão agrupada por cartão seria melhor,
+   e quando existir estes chips provavelmente saem. */
+.cat-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;}
+.cat-chip{font-family:var(--mono);font-size:9px;color:var(--muted);
+  border:1px solid var(--border2);border-radius:4px;padding:1px 6px;white-space:nowrap;}
+
+/* ── ÚLTIMOS LANÇAMENTOS ── */
+.ult-linha{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:baseline;
+  padding:10px 0;border-bottom:1px solid var(--border);}
+.ult-linha:last-child{border-bottom:none;}
+.ult-data{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;}
+.ult-desc{min-width:0;}
+.ult-desc strong{font-weight:400;font-size:13px;display:block;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;}
+/* Banco e produto como subtexto, não como coluna: a linha já tem data,
+   descrição e valor, e uma quarta coluna estoura os 375px do celular. */
+.ult-meta{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px;}
+.ult-valor{font-family:var(--mono);font-size:12px;white-space:nowrap;}
+.ult-rodape{margin-top:12px;text-align:center;}
 
 /* ── CATEGORIA TABLE ── */
 .cat-table{width:100%;border-collapse:collapse;}
@@ -313,7 +340,6 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
 
 @media(max-width:900px){
   .kpi-grid{grid-template-columns:repeat(2,1fr);}
-  .decomp-grid{grid-template-columns:repeat(2,1fr);}
   .proj-grid{grid-template-columns:1fr;}
   .casal-grid{grid-template-columns:1fr;}
   .casal-acerto-grid{grid-template-columns:1fr;}
@@ -409,7 +435,7 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
   .tab{flex:0 0 auto;white-space:nowrap;padding:13px 14px;}
 
   main{padding:14px 12px;}
-  .kpi-grid,.decomp-grid{gap:10px;}
+  .kpi-grid{gap:10px;}
   .kpi-val{font-size:19px;}
 
   /* Busca ocupa a linha; os filtros quebram embaixo. */
@@ -497,11 +523,13 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
       <div id="mes-loading" class="loading"><div class="spinner"></div> carregando dados...</div>
       <div id="mes-content" style="display:none">
         <div id="reemb-alert-area"></div>
+        <!-- Um grid só. Antes eram dois — `kpi-grid` com cinco cards e
+             `decomp-grid` logo abaixo repetindo os mesmos quatro primeiros
+             valores sob o título "decomposição da fatura". A única diferença
+             era que a decomposição aplicava o modo líquido em fixos + casa,
+             que é o comportamento mais correto dos dois; foi ele que ficou. -->
         <div class="kpi-grid" id="kpi-grid"></div>
-        <div class="section">
-          <div class="section-hdr"><span class="section-title">decomposição da fatura</span></div>
-          <div class="decomp-grid" id="decomp-grid"></div>
-        </div>
+        <div class="saldo-row" id="saldo-row"></div>
         <div class="section">
           <div class="section-hdr">
             <span class="section-title">gastos por categoria</span>
@@ -512,9 +540,15 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
           </div>
           <table class="cat-table" id="cat-table"></table>
         </div>
+        <!-- Era "comparativo mês anterior", com as colunas
+             Categoria · Mês anterior · Mês atual · Variação — exatamente as
+             mesmas da tabela "evolução por categoria" da aba histórico.
+             Remover daqui não perde informação: ela continua existindo na aba
+             onde faz sentido comparar. No lugar entra o que o mês atual não
+             tinha, que é ver o que aconteceu por último. -->
         <div class="section">
-          <div class="section-hdr"><span class="section-title">comparativo mês anterior</span></div>
-          <table class="parc-table"><thead><tr><th>Categoria</th><th>Mês anterior</th><th>Mês atual</th><th>Variação</th></tr></thead><tbody id="comp-cat-body"></tbody></table>
+          <div class="section-hdr"><span class="section-title">últimos lançamentos</span></div>
+          <div id="ultimos-lanc"></div>
         </div>
       </div>
     </div>
@@ -701,8 +735,12 @@ function removerOverride(){
     <div class="modal-label">categoria</div>
     <div class="modal-row">
       <select class="modal-select" id="rachar-cat" style="flex:1">
-        <option>Alimentação</option><option>Lazer</option><option>Transporte - Uber</option>
-        <option>Saúde</option><option>Diversos</option><option>Viagem</option>
+        <option value="Alimentacao">Alimentação</option>
+        <option value="Lazer">Lazer</option>
+        <option value="Transporte">Transporte</option>
+        <option value="Saude e bem-estar">Saúde e bem-estar</option>
+        <option value="Compras">Compras</option>
+        <option value="Viagem">Viagem</option>
       </select>
     </div>
     <div class="modal-label">split</div>
@@ -816,6 +854,35 @@ const fmtCentavos=v=>"R$ "+Math.abs(v).toLocaleString("pt-BR",{minimumFractionDi
 const mesStr=(m,y)=>String(m).padStart(2,"0")+"/"+y;
 const labelMes=(m,y)=>["","jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"][m]+"/"+String(y).slice(2);
 const isLiq=()=>document.getElementById("toggle-liq").checked;
+
+// ── O MÊS É O DE CAIXA ────────────────────────────────────
+// O painel mostra quando o dinheiro SAI da conta, não quando a compra foi
+// feita. Uma compra no cartão em 19/07 aparece em agosto, porque é no
+// vencimento da fatura que ela pesa no bolso.
+//
+// Competência (a data da compra) chegou a existir como alternativa e foi
+// removida: ela responde bem a pergunta de orçamento — "em que eu decidi
+// gastar" — mas não a que este painel existe para responder, que é "quanto vai
+// sair e o salário cobre". Duas leituras convivendo obrigavam a lembrar em
+// qual delas cada número estava.
+//
+// A coluna `mes` continua vindo do exportador com a competência: ela é o que
+// permite ao ledger e à conferência por fatura baterem com o extrato. Quem
+// agrega gasto usa `mesDe`.
+const mesDe=r=>r.mesCaixa||r.mes;
+
+// A renda do mês, na regra que o Lucas definiu: o que de fato entrou quando
+// existe registro, o valor fixo da Config quando não existe.
+//
+// Sem a segunda metade, todo mês cujo extrato ainda não foi ingerido apareceria
+// com renda zero — agosto/2026 mostraria −R$ 12 mil e o número estaria errado
+// por falta de dado, não por gasto.
+function rendaDoMes(ms){
+  const real=(movimentos||[])
+    .filter(r=>r.mes===ms&&r.cat==="Renda do trabalho")
+    .reduce((s,r)=>s+(r.credito||0),0);
+  return real>0?real:RENDA_PISO;
+}
 const cartaoFil=()=>document.getElementById("cartao-sel").value;
 
 // ── LOGIN ─────────────────────────────────────────────────
@@ -947,15 +1014,41 @@ const boolTexto=v=>/^(true|sim|1)$/i.test(String(v||""));
 // Uma linha da planilha vira um lançamento. Tudo chega como texto — a aba está
 // formatada como texto simples de propósito, senão o Sheets converte "05/2026"
 // em data e estraga a competência.
-const parseLinha=r=>({
-  data:r[0],desc:r[1],cat:r[2],
-  valor:parseFloat(String(r[3]||"0").replace(/[R$\s.]/g,"").replace(",","."))||0,
-  tipo:r[4],mes:r[5],ano:parseInt(r[6]),cartao:r[7],
-  parcAtual:parseInt(r[8])||1,parcTotal:parseInt(r[9])||1,mesFinal:r[10],
-  origem:r[11]||"",id:r[12]||"legacy-"+hashCurto(r.slice(0,12).join("|")),
-  produto:r[13]||"cartao",direcao:r[14]||(r[4]==="Reembolso"?"Crédito":"Débito"),
-  fixo:r[15]!==undefined?boolTexto(r[15]):["Fixo","Casa","Assinatura"].includes(r[4])
-});
+// `MM/AAAA`, para reconhecer a coluna de caixa pelo formato.
+const RE_MES=/^\d{2}\/\d{4}$/;
+
+// A aba `Transações` ganhou `mesCaixa` como 12ª coluna em 20/08/2026, entre
+// `mesFinal` e `origem`. Uma planilha ainda não migrada tem 16 colunas, e ler
+// as 17 nela **desloca tudo uma casa**: `mesCaixa` receberia `origem`,
+// `id` receberia `produto`, e assim por diante.
+//
+// Um `||` não protege disso. A primeira versão fazia `mesCaixa: r[11]||r[5]`,
+// pensando em coluna ausente — mas na aba antiga `r[11]` é `"Santander·0.80"`,
+// que é truthy, passa, e vira mês de caixa. O painel não acharia lançamento
+// nenhum e não diria por quê.
+//
+// Reconhecer pelo FORMATO resolve os dois casos com a mesma regra: se a 12ª
+// coluna não parece `MM/AAAA`, a linha é do formato antigo.
+const parseLinha=r=>{
+  const novo=RE_MES.test(String(r[11]||""));
+  const i=novo?{caixa:11,origem:12,id:13,produto:14,direcao:15,fixo:16}
+              :{caixa:5, origem:11,id:12,produto:13,direcao:14,fixo:15};
+  return{
+    data:r[0],desc:r[1],cat:r[2],
+    valor:parseFloat(String(r[3]||"0").replace(/[R$\s.]/g,"").replace(",","."))||0,
+    tipo:r[4],mes:r[5],ano:parseInt(r[6]),cartao:r[7],
+    parcAtual:parseInt(r[8])||1,parcTotal:parseInt(r[9])||1,mesFinal:r[10],
+    // O mês em que o dinheiro sai. Sem a coluna, é o próprio mês: a aba antiga
+    // continua abrindo, e a visão de caixa vira competência em vez de quebrar.
+    mesCaixa:r[i.caixa]||r[5],
+    origem:r[i.origem]||"",
+    id:r[i.id]||"legacy-"+hashCurto(r.slice(0,12).join("|")),
+    produto:r[i.produto]||"cartao",
+    direcao:r[i.direcao]||(r[4]==="Reembolso"?"Crédito":"Débito"),
+    fixo:r[i.fixo]!==undefined?boolTexto(r[i.fixo])
+        :["Fixo","Casa","Assinatura"].includes(r[4]),
+  };
+};
 
 const parseMovLinha=r=>({
   id:r[0]||"mov-"+hashCurto(r.join("|")),data:r[1],descOriginal:r[2]||r[3]||"",
@@ -981,8 +1074,8 @@ function movimentosDeDados(dados){
 async function carregarTudo(){
   // A aba da Julia pode não existir ainda; o catch evita derrubar o painel todo.
   const[txRows,juliaRows,splitRows,cfgL,compL,cfgJ,compJ,movL,movJ,saldos,ovRows,reembRows,pcRows,invRows,idxRows,contaRows,cotRows]=await Promise.all([
-    fetchSheet("Transações!A5:P1000"),
-    fetchSheet("'Transações Julia'!A5:P1000").catch(()=>[]),
+    fetchSheet("Transações!A5:Q1000"),
+    fetchSheet("'Transações Julia'!A5:Q1000").catch(()=>[]),
     fetchSheet("Config!C9").catch(()=>[]),
     fetchSheet(PERFIS.Lucas.orcamento).catch(()=>[]),
     fetchSheet(PERFIS.Lucas.compromissos).catch(()=>[]),
@@ -1064,7 +1157,7 @@ function lerConfig(perfilAlvo,linhasOrcamento,linhasCompromissos){
     const rateio=String(r[3]||"");
     const casal=/casal/i.test(rateio);
     const dono=(rateio.match(/casal\s*[:\-]\s*(\w+)/i)||[])[1];
-    return{desc:r[0],valor:valorBRL(r[1]),cat:r[2]||"Diversos",casal,
+    return{desc:r[0],valor:valorBRL(r[1]),cat:r[2]||"Nao classificado",casal,
       quemPaga:casal?(dono?dono[0].toUpperCase()+dono.slice(1).toLowerCase():perfilAlvo):perfilAlvo};
   }).filter(c=>c.valor>0);
   cfg.orcamentos={...PERFIS[perfilAlvo].padrao};
@@ -1147,6 +1240,10 @@ const chaveMes=(m,y)=>y*12+m;
 // futura — estorno em contestação, por exemplo — não pode fazer o painel achar
 // que aquele mês já aconteceu e desligar a projeção dele.
 function ultimoMesReal(){
+  // Por COMPETÊNCIA, não por caixa. O resto do painel agrega por caixa, mas
+  // "até onde os dados vão" é sobre o que já aconteceu — e uma compra de
+  // agosto cuja fatura vence em setembro não faz setembro já ter acontecido.
+  // É o mesmo motivo do estorno futuro no comentário acima.
   const meses=getDisplayData().filter(r=>r.mes&&r.tipo!=="Reembolso")
     .map(r=>{const[m,y]=r.mes.split("/").map(Number);return chaveMes(m,y);});
   return meses.length?Math.max(...meses):0;
@@ -1236,7 +1333,11 @@ const compromissoMeu=c=>c.casal&&SPLIT_LUCAS?c.valor*meuRateioAtual():c.valor;
 function dadosProjetados(m,y){
   if(!mesEhProjetado(m,y))return[];
   const ms=mesStr(m,y);
-  const base={mes:ms,ano:y,data:"01/"+ms,projetado:true};
+  // `mesCaixa` junto: sem ele a linha projetada herdaria o mês de caixa do
+  // lançamento de origem e nunca apareceria no mês para o qual foi projetada.
+  // Para um mês futuro não há vencimento conhecido, então competência e caixa
+  // são o mesmo mês — que é o mês projetado.
+  const base={mes:ms,mesCaixa:ms,ano:y,data:"01/"+ms,projetado:true};
   // Compromissos fixos: mesma classificação que teriam no mês real, para os
   // KPIs somarem nos mesmos baldes.
   // Compromisso que o outro adianta entra como "A pagar", igual aos meses
@@ -1254,7 +1355,19 @@ function dadosProjetados(m,y){
   }).map(r=>{
     const[mr,yr]=r.mes.split("/").map(Number);
     const avancou=chaveMes(m,y)-chaveMes(mr,yr);
+    // Quanto o caixa deste cartão se afasta da competência — lido da própria
+    // linha de origem, não recalculado aqui. O Itaú do Lucas vence dia 1 e é
+    // pago com o salário do mês anterior, então o deslocamento é −1; o
+    // Santander vence dia 30 e fica em 0.
+    //
+    // Ler da linha em vez de repetir a tabela de vencimentos no JavaScript:
+    // duas cópias da mesma regra divergem, e aqui a origem já carrega a
+    // resposta.
+    const[mc,yc]=(r.mesCaixa||r.mes).split("/").map(Number);
+    const desloc=chaveMes(mc,yc)-chaveMes(mr,yr);
+    const alvo=chaveMes(m,y)+desloc;
     return{...r,...base,cartao:r.cartao||"projetado",
+      mesCaixa:mesStr((alvo-1)%12+1,Math.floor((alvo-1)/12)),
       parcAtual:Math.min(r.parcTotal,r.parcAtual+avancou)};
   });
   // A parte da Julia nos compromissos do casal, item a item — mesmo tratamento
@@ -1277,13 +1390,28 @@ function dadosProjetados(m,y){
 
 function dadosMes(m,y,cartao=""){
   const ms=mesStr(m,y);
-  const reais=getDisplayData().filter(r=>r.mes===ms&&(!cartao||r.cartao===cartao));
-  if(!mesEhProjetado(m,y))return reais;
-  // Mês futuro SOMA o que já está lançado nele com a projeção, em vez de
-  // escolher um dos dois: um estorno esperado em setembro não pode fazer o mês
-  // perder os fixos e as parcelas que também vão cair lá.
-  const proj=dadosProjetados(m,y);
-  return[...reais,...(cartao?proj.filter(r=>r.cartao===cartao):proj)];
+  const reais=getDisplayData().filter(r=>mesDe(r)===ms&&(!cartao||r.cartao===cartao));
+
+  // Projeção do próprio mês E do seguinte. O mês seguinte entra porque cartão
+  // que vence no começo do mês é pago com o salário do mês anterior: a fatura
+  // do Itaú que vence 01/09 sai do bolso em agosto, e as parcelas dela estão
+  // na projeção de setembro.
+  //
+  // Sem isso, agosto mostrava só o punhado de lançamentos que o print da
+  // fatura aberta capturou, contra a fatura inteira que o app do banco exibe —
+  // faltavam as parcelas, que eram três quartos do valor. A fatura que agosto
+  // paga ainda não fechou, então a parte que falta só existe projetada.
+  //
+  // (Sem os números: este arquivo é servido publicamente pelo GitHub Pages, e
+  // saldo em comentário fica no fonte e no histórico do git para sempre.)
+  //
+  // O filtro por `mesDe` é quem evita contar duas vezes: a projeção de setembro
+  // que pertence ao caixa de agosto sai da lista de setembro sozinha.
+  const seg=chaveMes(m,y)+1;
+  const proj=[...dadosProjetados(m,y),
+              ...dadosProjetados((seg-1)%12+1,Math.floor((seg-1)/12))]
+    .filter(r=>mesDe(r)===ms&&(!cartao||r.cartao===cartao));
+  return[...reais,...proj];
 }
 
 // ── DRILL-DOWN POR CATEGORIA ──────────────────────────────
@@ -1380,7 +1508,12 @@ function renderizarMes(){
   const totalBruto=variavel+parcela+assinatura+fixo+casa;
   const totalLiq=totalBruto-reembolso;
   const total=isLiq()?totalLiq:totalBruto;
-  const saldo=RENDA_PISO-total;
+  // Em caixa o saldo é uma conta de verdade: o que entrou menos o que saiu.
+  // Em competência continua sendo o piso menos o gasto, que é uma referência
+  // de orçamento e não uma previsão de conta corrente.
+  const renda=rendaDoMes(mesStr(mesAtual.m,mesAtual.y));
+  const rendaEhReal=renda!==RENDA_PISO;
+  const saldo=renda-total;
 
   // Alert reembolso faltando
   const alertArea=document.getElementById("reemb-alert-area");
@@ -1406,20 +1539,49 @@ function renderizarMes(){
   }
   alertArea.innerHTML=avisos;
 
+  // `casaLiq` desconta da recorrência o reembolso que volta pela mesma
+  // categoria. O filtro era `r.cat==="Casa"` — nome do vocabulário antigo, que
+  // deixou de existir em 20/08 e fazia o desconto virar zero em silêncio, sem
+  // erro nenhum na tela. Hoje a categoria é `Moradia`.
+  const casaLiq=casa+fixo+assinatura-txs.filter(r=>r.tipo==="Reembolso"&&r.cat==="Moradia").reduce((s,r)=>s+r.valor,0);
+  const recorrentes=isLiq()?casaLiq:fixo+casa+assinatura;
+  // `gasto mês` é tudo que vence neste mês menos as parcelas antigas: gasto
+  // variável, assinatura, fixo e casa juntos. Eram dois cards ("gasto novo" e
+  // "fixos e casa") e viraram um, porque a distinção entre decidir e ser
+  // obrigado não muda o fato de o dinheiro sair — e quem olha o header quer
+  // saber quanto sai.
+  //
+  // `parcelas antigas` fica separado porque é a única parte que não é decisão
+  // deste mês nem obrigação recorrente: é compra passada ainda sendo paga.
+  //
+  // `gasto total` é a soma dos dois, explícita. Sem ela a pessoa somava de
+  // cabeça e errava — e é esse o número que o saldo usa.
+  // `gastoTotal` É o `total` que o saldo usa, não uma soma paralela. Montar os
+  // cards por fora dava um número diferente no modo líquido — `recorrentes`
+  // desconta só o reembolso de Moradia, e `total` desconta todos —, e aí o
+  // card diria um valor e o "renda − gasto total" do saldo usaria outro.
+  //
+  // Derivando `gastoMes` por subtração, os três números fecham por construção:
+  // gasto mês + parcelas antigas = gasto total, sempre.
+  const gastoTotal=total;
+  const gastoMes=gastoTotal-parcela;
   document.getElementById("kpi-grid").innerHTML=`
-    <div class="kpi-card"><div class="kpi-label">gasto novo</div><div class="kpi-value red">${fmt(variavel)}</div><div class="kpi-sub">decisões deste mês</div></div>
-    <div class="kpi-card"><div class="kpi-label">parcelas</div><div class="kpi-value amber">${fmt(parcela)}</div><div class="kpi-sub">compras anteriores</div></div>
-    <div class="kpi-card"><div class="kpi-label">fixos + casa</div><div class="kpi-value blue">${fmt(fixo+casa+assinatura)}</div><div class="kpi-sub">recorrentes</div></div>
+    <div class="kpi-card"><div class="kpi-label">gasto mês${isLiq()?' (líq)':''}</div><div class="kpi-value red">${fmt(gastoMes)}</div><div class="kpi-sub">variável, fixos e casa</div></div>
+    <div class="kpi-card"><div class="kpi-label">parcelas antigas</div><div class="kpi-value amber">${fmt(parcela)}</div><div class="kpi-sub">compras anteriores</div></div>
+    <div class="kpi-card"><div class="kpi-label">gasto total</div><div class="kpi-value red">${fmt(gastoTotal)}</div><div class="kpi-sub">sai da conta neste mês</div></div>
     <div class="kpi-card"><div class="kpi-label">a receber</div><div class="kpi-value green">${fmt(reembolso)}</div><div class="kpi-sub">reembolsos</div></div>
-    <div class="kpi-card"><div class="kpi-label">saldo ${isLiq()?'líquido':'bruto'}</div><div class="kpi-value ${RENDA_PISO?(saldo>=0?'green':'red'):''}">${RENDA_PISO?(saldo<0?"−":"")+fmt(saldo):'—'}</div><div class="kpi-sub">${RENDA_PISO?`piso ${fmt(RENDA_PISO)} − ${isLiq()?'líquido':'bruto'}`:'defina "Renda piso" na aba Config'}</div></div>
   `;
 
-  const casaLiq=casa+fixo+assinatura-txs.filter(r=>r.tipo==="Reembolso"&&r.cat==="Casa").reduce((s,r)=>s+r.valor,0);
-  document.getElementById("decomp-grid").innerHTML=`
-    <div class="decomp-card"><div class="decomp-label">gasto novo</div><div class="decomp-value" style="color:var(--red)">${fmt(variavel)}</div><div class="decomp-sub">variável</div></div>
-    <div class="decomp-card"><div class="decomp-label">parcelas</div><div class="decomp-value" style="color:var(--amber)">${fmt(parcela)}</div><div class="decomp-sub">compras anteriores</div></div>
-    <div class="decomp-card"><div class="decomp-label">fixos + casa${isLiq()?' (líq)':''}</div><div class="decomp-value" style="color:var(--blue)">${fmt(isLiq()?casaLiq:fixo+casa+assinatura)}</div><div class="decomp-sub">recorrentes</div></div>
-    <div class="decomp-card"><div class="decomp-label">reembolsos</div><div class="decomp-value" style="color:var(--green)">+${fmt(reembolso)}</div><div class="decomp-sub">volta pro bolso</div></div>
+  // O rótulo era `saldo ${isLiq()?'líquido':'bruto'}` — era ele que dizia qual
+  // modo estava ativo. Com o nome fixo em "saldo final", essa informação
+  // precisa continuar no subtexto, senão o toggle muda o número sem nada na
+  // tela indicando que mudou.
+  document.getElementById("saldo-row").innerHTML=`
+    <div class="saldo-esq">
+      <div class="kpi-label">saldo final</div>
+      <div class="kpi-sub">${renda?`${rendaEhReal?"entrou":"renda fixa"} ${fmt(renda)} − gasto total${rendaEhReal?"":" · salário do mês ainda não ingerido"}`:'defina "Renda piso" na aba Config'}</div>
+    </div>
+    <div class="kpi-value ${renda?(saldo>=0?'green':'red'):''}">${renda?(saldo<0?"−":"")+fmt(saldo):'—'}</div>
   `;
 
   // Categorias — a linha abre e mostra o que compõe o número.
@@ -1429,10 +1591,25 @@ function renderizarMes(){
   // R$ 604 contra um orçamento de Estudo de R$ 200, e sem essa marcação a linha
   // vermelha viraria alarme falso permanente.
   const porCat={},fixoPorCat={};
+  // Onde cada categoria foi gasta. Sai do mesmo laço que já soma: os dados
+  // vêm em `r.cartao`, que o exportador já preenche pelo mapa `BANCOS`.
+  const bancoPorCat={};
   txs.filter(r=>r.tipo!=="Reembolso"&&r.cat).forEach(r=>{
     porCat[r.cat]=(porCat[r.cat]||0)+r.valor;
     if(["Fixo","Casa"].includes(r.tipo))fixoPorCat[r.cat]=(fixoPorCat[r.cat]||0)+r.valor;
+    const banco=r.cartao||"—";
+    (bancoPorCat[r.cat]=bancoPorCat[r.cat]||{})[banco]=(bancoPorCat[r.cat][banco]||0)+r.valor;
   });
+
+  // Um chip só não informa nada — se toda a categoria veio de um banco, o
+  // chip repete o que a linha já diz. Dois ou mais é que respondem "onde".
+  const chipsDe=cat=>{
+    const bancos=Object.entries(bancoPorCat[cat]||{})
+      .filter(([,v])=>v>0.005).sort((a,b)=>b[1]-a[1]);
+    if(bancos.length<2)return "";
+    return`<div class="cat-chips">${bancos.map(([b,v])=>
+      `<span class="cat-chip">${esc(b)} ${fmt(v)}</span>`).join("")}</div>`;
+  };
   // Reembolso desconta da própria categoria. Antes só descontava se a categoria
   // já tivesse gasto (`if(porCat[r.cat])`), o que fazia a categoria "A receber"
   // — que só tem crédito — sumir da tabela sem deixar rastro.
@@ -1460,10 +1637,10 @@ function renderizarMes(){
         : recebe
           ? `líquido a receber de ${outroPerfil()}, já descontado o que você deve`
           : `líquido a transferir para ${outroPerfil()}, já descontado o que ${outroPerfil()} te deve`;
-      linha=`<tr class="cat-row${recebe?" credito":""}${aberta?" aberta":""}" data-cat="${cat}"><td class="cat-name">${chevron}${cat}<span class="cat-fech-nota">${nota}</span></td><td></td><td class="cat-vals">${recebe?"−":""}${fmt(val)}</td><td class="cat-status">${recebe?"💚":"🤝"}</td></tr>`;
+      linha=`<tr class="cat-row${recebe?" credito":""}${aberta?" aberta":""}" data-cat="${cat}"><td class="cat-name">${chevron}${rotuloCat(cat)}<span class="cat-fech-nota">${nota}</span></td><td></td><td class="cat-vals">${recebe?"−":""}${fmt(val)}</td><td class="cat-status">${recebe?"💚":"🤝"}</td></tr>`;
     }else if(val<0){
       // Crédito: não tem orçamento para comparar nem barra que faça sentido.
-      linha=`<tr class="cat-row credito${aberta?" aberta":""}" data-cat="${cat}"><td class="cat-name">${chevron}${cat}<span class="cat-fech-nota">volta pro bolso quando ${outroPerfil()} acertar</span></td><td></td><td class="cat-vals">−${fmt(val)}</td><td class="cat-status">💚</td></tr>`;
+      linha=`<tr class="cat-row credito${aberta?" aberta":""}" data-cat="${cat}"><td class="cat-name">${chevron}${rotuloCat(cat)}<span class="cat-fech-nota">volta pro bolso quando ${outroPerfil()} acertar</span></td><td></td><td class="cat-vals">−${fmt(val)}</td><td class="cat-status">💚</td></tr>`;
     }else{
       const orc=orcamentos[cat]||0;const pct=orc>0?(val/orc):0;
       const barPct=Math.min(val/maxV*100,100);
@@ -1471,7 +1648,7 @@ function renderizarMes(){
       const emoji=pct>1?"🔴":pct>0.85?"🟡":"🟢";
       const fixo=fixoPorCat[cat]||0;
       const tagFixo=fixo>0?`<span class="cat-tag-fixo" title="parte da categoria que é compromisso fixo — não é decisão do mês">fixo ${fmt(fixo)}</span>`:"";
-      linha=`<tr class="cat-row${aberta?" aberta":""}" data-cat="${cat}"><td class="cat-name">${chevron}${cat}${tagFixo}</td><td><div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${barPct}%;background:${color}"></div></div></td><td class="cat-vals">${fmt(val)}${orc?" / "+fmt(orc):""}</td><td class="cat-status">${emoji}</td></tr>`;
+      linha=`<tr class="cat-row${aberta?" aberta":""}" data-cat="${cat}"><td class="cat-name">${chevron}${rotuloCat(cat)}${tagFixo}${chipsDe(cat)}</td><td><div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${barPct}%;background:${color}"></div></div></td><td class="cat-vals">${fmt(val)}${orc?" / "+fmt(orc):""}</td><td class="cat-status">${emoji}</td></tr>`;
     }
     return linha+(aberta?detalheCategoria(txs,cat):"");
   }).join("");
@@ -1512,19 +1689,23 @@ function renderizarMes(){
   const btn=document.getElementById("btn-detalhar");
   if(btn)btn.textContent=catsAbertas.size?"▾ recolher tudo":"▸ detalhar tudo";
 
-  // Comparativo mês anterior
-  const antM=mesAtual.m===1?12:mesAtual.m-1;
-  const antY=mesAtual.m===1?mesAtual.y-1:mesAtual.y;
-  const ant=dadosMes(antM,antY,cartaoFil());
-  const catAnt={},catAtu={};
-  ant.filter(r=>r.tipo!=="Reembolso").forEach(r=>{catAnt[r.cat]=(catAnt[r.cat]||0)+r.valor;});
-  txs.filter(r=>r.tipo!=="Reembolso").forEach(r=>{catAtu[r.cat]=(catAtu[r.cat]||0)+r.valor;});
-  const allCats=[...new Set([...Object.keys(catAnt),...Object.keys(catAtu)])].filter(c=>c&&c!=="Reembolso");
-  document.getElementById("comp-cat-body").innerHTML=allCats.sort().map(cat=>{
-    const a=catAnt[cat]||0,u=catAtu[cat]||0,d=u-a;
-    const clr=d>0?"var(--red)":d<0?"var(--green)":"var(--muted)";
-    return`<tr><td>${cat}</td><td style="font-family:var(--mono);color:var(--muted)">${a>0?fmt(a):"—"}</td><td style="font-family:var(--mono)">${u>0?fmt(u):"—"}</td><td style="font-family:var(--mono);color:${clr}">${d!==0?(d>0?"+":"")+fmt(d):"—"}</td></tr>`;
-  }).join("");
+  // Últimos lançamentos. Substitui o comparativo mês anterior, que repetia a
+  // tabela da aba histórico coluna por coluna.
+  //
+  // Ordena pela data real, não pela ordem do array: o feed vem agrupado por
+  // origem, então a última linha do array não é o último lançamento do mês.
+  const ultimos=[...txs].filter(r=>r.data)
+    .sort((a,b)=>chaveData(b.data)-chaveData(a.data)).slice(0,12);
+  document.getElementById("ultimos-lanc").innerHTML=ultimos.length?ultimos.map(r=>{
+    const meta=[r.cartao,r.produto==="cartao"?"cartão":r.produto].filter(Boolean).join(" · ");
+    const credito=r.tipo==="Reembolso";
+    return`<div class="ult-linha">
+      <div class="ult-data">${esc(r.data)}</div>
+      <div class="ult-desc"><strong>${esc(r.desc)}</strong><div class="ult-meta">${esc(meta)}</div></div>
+      <div class="ult-valor" style="color:${credito?"var(--green)":"var(--text)"}">${credito?"+":""}${fmt(r.valor)}</div>
+    </div>`;
+  }).join("")+`<div class="ult-rodape"><button class="action-btn" onclick="irParaTransacoes()">ver todos em transações →</button></div>`
+   :`<div class="ult-meta">nenhum lançamento neste mês.</div>`;
 
   document.getElementById("mes-loading").style.display="none";
   document.getElementById("mes-content").style.display="block";
@@ -1534,8 +1715,8 @@ function renderizarMes(){
 function renderizarHistorico(){
   const displayData=getDisplayData();
   const meses={};
-  displayData.filter(r=>r.tipo!=="Reembolso"&&r.mes).forEach(r=>{meses[r.mes]=(meses[r.mes]||0)+r.valor;});
-  if(isLiq()) displayData.filter(r=>r.tipo==="Reembolso"&&r.mes).forEach(r=>{if(meses[r.mes])meses[r.mes]-=r.valor;});
+  displayData.filter(r=>r.tipo!=="Reembolso"&&mesDe(r)).forEach(r=>{meses[mesDe(r)]=(meses[mesDe(r)]||0)+r.valor;});
+  if(isLiq()) displayData.filter(r=>r.tipo==="Reembolso"&&mesDe(r)).forEach(r=>{if(meses[mesDe(r)])meses[mesDe(r)]-=r.valor;});
   const ordem=Object.keys(meses).sort((a,b)=>{const[ma,ya]=a.split("/").map(Number);const[mb,yb]=b.split("/").map(Number);return ya*12+ma-(yb*12+mb);}).slice(-12);
   const maxV=Math.max(...ordem.map(m=>meses[m]),1);
   document.getElementById("chart-bars").innerHTML=ordem.map(mes=>{
@@ -1547,13 +1728,13 @@ function renderizarHistorico(){
   const mesAntStr=mesAtual.m===1?mesStr(12,mesAtual.y-1):mesStr(mesAtual.m-1,mesAtual.y);
   const mesAtStr=mesStr(mesAtual.m,mesAtual.y);
   const ant={},atu={};
-  displayData.filter(r=>r.mes===mesAntStr).forEach(r=>{ant[r.cat]=(ant[r.cat]||0)+r.valor;});
-  displayData.filter(r=>r.mes===mesAtStr).forEach(r=>{atu[r.cat]=(atu[r.cat]||0)+r.valor;});
+  displayData.filter(r=>mesDe(r)===mesAntStr).forEach(r=>{ant[r.cat]=(ant[r.cat]||0)+r.valor;});
+  displayData.filter(r=>mesDe(r)===mesAtStr).forEach(r=>{atu[r.cat]=(atu[r.cat]||0)+r.valor;});
   const cats=[...new Set([...Object.keys(ant),...Object.keys(atu)])].filter(c=>c&&c!=="Reembolso");
   document.getElementById("hist-cat-body").innerHTML=cats.sort().map(cat=>{
     const a=ant[cat]||0,u=atu[cat]||0,d=u-a;
     const clr=d>0?"var(--red)":d<0?"var(--green)":"var(--muted)";
-    return`<tr><td>${cat}</td><td style="font-family:var(--mono);color:var(--muted)">${a>0?fmt(a):"—"}</td><td style="font-family:var(--mono)">${u>0?fmt(u):"—"}</td><td style="font-family:var(--mono);color:${clr}">${d!==0?(d>0?"+":"")+fmt(d):"—"}</td></tr>`;
+    return`<tr><td>${rotuloCat(cat)}</td><td style="font-family:var(--mono);color:var(--muted)">${a>0?fmt(a):"—"}</td><td style="font-family:var(--mono)">${u>0?fmt(u):"—"}</td><td style="font-family:var(--mono);color:${clr}">${d!==0?(d>0?"+":"")+fmt(d):"—"}</td></tr>`;
   }).join("");
   document.getElementById("hist-loading").style.display="none";
   document.getElementById("hist-content").style.display="block";
@@ -1563,11 +1744,39 @@ function renderizarHistorico(){
 // A descrição original nunca é a chave: duas compras iguais podem ocorrer no
 // mesmo dia. O ID vem da base canônica e permite que uma correção alcance todas
 // as visões sem alterar outro lançamento por acidente.
-const CATEGORIAS_EDITAVEIS=["Alimentação","Transporte - Uber","Transporte - Ônibus",
-  "Lazer","Saúde","Roupas / Aparência","Assinaturas","Estudo",
-  "Presentes / Família","Presente Julia","Viagem","Casa","Compras",
-  "Entradas","Transferências","Pagamento de fatura",
-  "Investimentos","Reembolso","Diversos","Não classificado"];
+// O vocabulário é o da base desde 20/08/2026 — as mesmas chaves de
+// `categorias` no Postgres. Antes eram outras 20, e `exportar_painel.py`
+// traduzia; a tradução escondia `Pets`, `Tarifas financeiras` e
+// `Obrigacoes financeiras` dentro de um balde chamado `Diversos`.
+//
+// `Reembolso` e `Pagamento de fatura` saíram: não são categoria, são o tipo do
+// lançamento, e a coluna `tipo` já responde isso. Mantê-los aqui obrigava a
+// escolher entre dizer em que a pessoa gastou e dizer o que a linha era.
+const CATEGORIAS_EDITAVEIS=["Alimentacao","Transporte","Moradia",
+  "Saude e bem-estar","Vestuario e beleza","Educacao","Lazer","Viagem",
+  "Compras","Assinaturas e digital","Presentes","Pets","Tarifas financeiras",
+  "Obrigacoes financeiras","Transferencias a terceiros",
+  "Renda do trabalho","Rendimentos","Entradas a classificar",
+  "Movimentacoes internas","Investimentos",
+  "Boletos a classificar","Nao classificado"];
+
+// A chave é sem acento porque é chave — é ela que casa com a base, com o
+// override e com o merchant. O acento é apresentação, e mora aqui.
+//
+// Espelha a coluna `rotulo` de `categorias`. Enquanto o painel ler da planilha
+// precisa ser um mapa no código; quando ler do Postgres, vem da tabela e este
+// bloco sai.
+const ROTULOS={
+  "Alimentacao":"Alimentação","Saude e bem-estar":"Saúde e bem-estar",
+  "Vestuario e beleza":"Vestuário e beleza","Educacao":"Educação",
+  "Assinaturas e digital":"Assinaturas e digital",
+  "Tarifas financeiras":"Tarifas financeiras",
+  "Obrigacoes financeiras":"Obrigações financeiras",
+  "Transferencias a terceiros":"Transferências a terceiros",
+  "Movimentacoes internas":"Movimentações internas",
+  "Nao classificado":"Não classificado",
+};
+const rotuloCat=c=>ROTULOS[c]||c;
 
 const semAcento=s=>String(s??"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -2118,7 +2327,7 @@ function renderPizza(posicoes,bruto){
   document.getElementById("inv-legenda").innerHTML=classes.map(([c,v],n)=>
     `<div class="stack-leg-item" style="margin-bottom:6px">
       <span style="width:9px;height:9px;border-radius:2px;background:${CORES_CLASSE[n%CORES_CLASSE.length]}"></span>
-      ${esc(c)} · ${bruto?((v/bruto)*100).toFixed(0):0}%</div>`).join("");
+      ${esc(rotuloCat(c))} · ${bruto?((v/bruto)*100).toFixed(0):0}%</div>`).join("");
 }
 
 // Três linhas no mesmo eixo. A escala parte do menor valor da janela, não de
@@ -2381,7 +2590,7 @@ function abrirModalEditar(id){
   document.getElementById("edit-desc").value=atual.desc||atual.descOriginal||"";
   const catSelect=document.getElementById("edit-cat");
   const cats=[...new Set([...CATEGORIAS_EDITAVEIS,atual.cat].filter(Boolean))];
-  catSelect.innerHTML=cats.map(c=>`<option value="${esc(c)}"${c===atual.cat?" selected":""}>${esc(c)}</option>`).join("");
+  catSelect.innerHTML=cats.map(c=>`<option value="${esc(c)}"${c===atual.cat?" selected":""}>${esc(rotuloCat(c))}</option>`).join("");
   document.getElementById("edit-fixo").checked=!!atual.fixo;
   document.getElementById("modal-editar").classList.add("open");
 }
@@ -2539,7 +2748,7 @@ function renderTransacoes(){
     ? "o que o banco cobra nesta fatura" : "créditos e débitos do mês";
   document.getElementById("trans-body").innerHTML=txs.length?txs.map(r=>{
     const cats=[...new Set([...CATEGORIAS_EDITAVEIS,r.cat].filter(Boolean))];
-    const seletor=`<select class="inline-select" data-acao="categoria" data-id="${esc(r.id)}">${cats.map(c=>`<option value="${esc(c)}"${c===r.cat?" selected":""}>${esc(c)}</option>`).join("")}</select>`;
+    const seletor=`<select class="inline-select" data-acao="categoria" data-id="${esc(r.id)}">${cats.map(c=>`<option value="${esc(c)}"${c===r.cat?" selected":""}>${esc(rotuloCat(c))}</option>`).join("")}</select>`;
     const podeFixar=r.direcao==="Débito"&&r.produto==="conta";
     return`<tr>
       <td class="trans-data">${esc(r.data||"—")}</td>
@@ -2750,6 +2959,22 @@ function renderizarCasal(){
 }
 
 // ── TABS & NAV ────────────────────────────────────────────
+// `DD/MM/AAAA` para um número comparável. `new Date(texto)` interpreta a
+// string como MM/DD nos ambientes en-US e trocaria dia por mês em silêncio
+// para todo dia até o 12.
+function chaveData(texto){
+  const p=String(texto||"").split("/");
+  return p.length===3?Number(p[2])*10000+Number(p[1])*100+Number(p[0]):0;
+}
+
+// O `setTab` precisa do elemento da aba para marcá-la ativa. Buscar pelo
+// `onclick` em vez de por índice: reordenar as abas não deve quebrar o link.
+function irParaTransacoes(){
+  const aba=[...document.querySelectorAll(".tab")]
+    .find(t=>(t.getAttribute("onclick")||"").includes("'transacoes'"));
+  if(aba)setTab("transacoes",aba);
+}
+
 function setTab(id,el){
   document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
   document.querySelectorAll(".tab-content").forEach(t=>t.classList.remove("active"));
