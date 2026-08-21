@@ -1390,7 +1390,18 @@ function dadosProjetados(m,y){
 
 function dadosMes(m,y,cartao=""){
   const ms=mesStr(m,y);
-  const reais=getDisplayData().filter(r=>mesDe(r)===ms&&(!cartao||r.cartao===cartao));
+  // Filtrar por banco quer dizer "me mostra a fatura desse banco", e é assim
+  // que a pessoa confere contra o app. Por isso o filtro restringe a CARTÃO:
+  //
+  //   Julia · Itaú       tudo 2.375,58   só cartão 2.033,56  = a fatura
+  //   Julia · Safra      tudo 1.631,60   só cartão 1.466,19  = o app
+  //   Lucas · Santander  tudo 10.480,74  só cartão 9.984,66  = a fatura
+  //
+  // O que fica de fora é movimentação de conta corrente, que não está em
+  // fatura nenhuma e tem lugar próprio na aba Transações. Sem banco escolhido
+  // o mês continua completo — o recorte só existe quando alguém pede um banco.
+  const soDoBanco=r=>!cartao||(r.cartao===cartao&&r.produto==="cartao");
+  const reais=getDisplayData().filter(r=>mesDe(r)===ms&&soDoBanco(r));
 
   // Projeção do próprio mês E do seguinte. O mês seguinte entra porque cartão
   // que vence no começo do mês é pago com o salário do mês anterior: a fatura
@@ -1410,7 +1421,7 @@ function dadosMes(m,y,cartao=""){
   const seg=chaveMes(m,y)+1;
   const proj=[...dadosProjetados(m,y),
               ...dadosProjetados((seg-1)%12+1,Math.floor((seg-1)/12))]
-    .filter(r=>mesDe(r)===ms&&(!cartao||r.cartao===cartao));
+    .filter(r=>mesDe(r)===ms&&soDoBanco(r));
   return[...reais,...proj];
 }
 
@@ -1536,6 +1547,20 @@ function renderizarMes(){
   }
   if(faltando.length>0){
     avisos+=`<div class="reemb-alert"><span class="reemb-alert-icon">🟡</span><div class="reemb-alert-text"><strong>Reembolso esperado não lançado:</strong> ${faltando.join(", ")}</div></div>`;
+  }
+  // Com banco escolhido a tela mostra só a fatura dele, e o que fica de fora
+  // precisa ser dito. Sem este aviso o número simplesmente encolhe, e quem
+  // olha não sabe se foi recorte ou se o gasto sumiu.
+  if(cartaoFil()){
+    const forinhas=getDisplayData().filter(r=>mesDe(r)===mesStr(mesAtual.m,mesAtual.y)
+      &&r.cartao===cartaoFil()&&r.produto!=="cartao");
+    const fora=forinhas.reduce((s,r)=>s+r.valor,0);
+    avisos+=`<div class="reemb-alert"><span class="reemb-alert-icon">🔵</span>
+      <div class="reemb-alert-text"><strong>Só o cartão ${esc(cartaoFil())}:</strong>
+      este recorte mostra o que entra na fatura, para bater com o app do banco.
+      ${fora>0?`Ficam de fora ${fmt(fora)} de movimentação da conta corrente — estão na aba transações.`
+              :"Compromissos fixos não aparecem aqui: não pertencem a um banco."}
+      </div></div>`;
   }
   alertArea.innerHTML=avisos;
 
