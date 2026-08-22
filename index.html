@@ -783,13 +783,16 @@ let reembEsperados=[];
 
 // ── PERFIS ────────────────────────────────────────────────
 // O painel troca de titular: as mesmas abas passam a ler os lançamentos da
-// pessoa escolhida. `mesesParciais` são meses reconstruídos de print da fatura
-// aberta, sem total declarado do banco para conferir.
+// pessoa escolhida.
 //
-// 05/2026 esteve nesta lista do lado da Julia enquanto a única fonte do Safra
-// era a exportação de 90 dias, que começa em 19/05. Com as faturas de 05, 06 e
-// 07 na base — cada uma conciliada com o próprio total — maio dela deixou de
-// ser parcial.
+// `mesesParciais` e `avisoParcial` moravam aqui e saíram em 22/08/2026. Eram
+// duas listas escritas à mão — `["08/2026"]` — mais uma frase fixa descrevendo
+// a fatura daquele mês. Enquanto foram literais, "considerar o cartão fechado"
+// era impossível: não havia dado nenhum para mudar, só texto neste arquivo,
+// que ficava velho em silêncio.
+//
+// Agora vêm de `meses_parciais`, e a regra é evidência: o mês fecha quando o
+// total declarado da fatura bate com a soma da base.
 //
 // `temConfig` diz se a pessoa tem orçamento por categoria, renda piso e
 // compromissos fixos declarados na aba Config. Só o Lucas tem. Reaproveitar os
@@ -799,12 +802,12 @@ let reembEsperados=[];
 // orçamento embutido usado só enquanto a Config não responde — o dela é vazio
 // de propósito, para não mostrar a meta dele em cima do gasto dela.
 const PERFIS={
-  Lucas:{inicial:"L",mesesParciais:["08/2026"],padrao:ORC,
+  Lucas:{inicial:"L",padrao:ORC,
     orcamento:"Config!B15:C28",compromissos:"Config!B33:E45",
-    avisoParcial:"reconstruído de prints da fatura aberta. O total que o banco mostra está na própria tela; os prints ainda são parciais e a fatura não está conciliada."},
-  Julia:{inicial:"J",mesesParciais:["08/2026"],padrao:{},
+  },
+  Julia:{inicial:"J",padrao:{},
     orcamento:"Config!F15:G28",compromissos:"Config!F33:I45",
-    avisoParcial:"a fatura do Safra ainda não fechou. As compras do mês vêm da exportação de 90 dias, e as parcelas foram projetadas da fatura anterior — uma parcela que não terminou na última está na próxima. O valor pode mudar quando a fatura sair."},
+  },
 };
 // `null` quando a pessoa nunca escolheu — e a diferença importa: sem escolha
 // própria, quem manda é a conta que entrou.
@@ -816,6 +819,18 @@ let emailConectado="";
 // porque e-mail é dado pessoal e este arquivo é servido publicamente.
 // Colunas: perfil, e-mail.
 let contasPorEmail={};
+// Meses em que algum cartão com compras ainda não teve a fatura conferida,
+// vindos da view `meses_parciais`. Antes era `mesesParciais:["08/2026"]`
+// escrito à mão em PERFIS — e por isso ninguém conseguia "considerar o cartão
+// fechado": a informação não era dado, era literal neste arquivo, e ficava
+// velha em silêncio.
+//
+// Agora o mês fecha quando o total declarado da fatura bate com a soma da
+// base. A chave é `Perfil|MM/AAAA`, e o valor é a lista de bancos em aberto —
+// que o aviso passa a nomear, coisa que a frase fixa não fazia.
+const bancosEmAberto={};
+const mesEhParcial=(quem,ms)=>Object.prototype.hasOwnProperty.call(bancosEmAberto,quem+"|"+ms);
+
 const dadosPorPerfil={Lucas:[],Julia:[]};
 const movimentosPorPerfil={Lucas:[],Julia:[]};
 const saldosPorPerfil={Lucas:[],Julia:[]};
@@ -1282,6 +1297,14 @@ async function carregarTudo(){
 
   SPLIT_LUCAS=Number(doPerfil("Lucas").rateio)||0;
 
+  // `billing_month` vem como `AAAA-MM-DD`; o painel fala `MM/AAAA`.
+  Object.keys(bancosEmAberto).forEach(k=>delete bancosEmAberto[k]);
+  (d.meses_parciais||[]).forEach(r=>{
+    const[a,m]=String(r.billing_month||"").split("-");
+    if(!a||!m)return;
+    bancosEmAberto[r.person+"|"+m+"/"+a]=r.bancos_em_aberto||[];
+  });
+
   const ovRows=emLinhas(d.overrides,COLS_OVERRIDES);
   overridesRemotos=linhasParaOverrides(ovRows);
   linhasRemotas=ovRows.length;
@@ -1726,7 +1749,7 @@ function renderizarMes(){
   // Alert reembolso faltando
   const alertArea=document.getElementById("reemb-alert-area");
   const mesAtualStr=mesStr(mesAtual.m,mesAtual.y);
-  const parcial=PERFIS[perfil].mesesParciais.includes(mesAtualStr);
+  const parcial=mesEhParcial(perfil,mesAtualStr);
   const descsReemb=txs.filter(r=>r.tipo==="Reembolso").map(r=>r.desc.toLowerCase());
   // A lista de reembolsos esperados é do Lucas; no perfil dela não há o que
   // cobrar por esse caminho.
@@ -1740,7 +1763,14 @@ function renderizarMes(){
     avisos+=`<div class="reemb-alert" style="background:rgba(122,162,247,0.08);border-color:rgba(122,162,247,0.3)"><span class="reemb-alert-icon">🔮</span><div class="reemb-alert-text" style="color:var(--blue)"><strong>Mês projetado:</strong> ainda não aconteceu. Mostra ${nFix} compromisso${nFix===1?"":"s"} fixo${nFix===1?"":"s"} da aba Config mais as parcelas que ainda correm neste mês. Gasto variável não entra — ele não dá para prever lançamento a lançamento.</div></div>`;
   }
   if(parcial){
-    avisos+=`<div class="reemb-alert"><span class="reemb-alert-icon">🔵</span><div class="reemb-alert-text"><strong>Mês parcial:</strong> ${PERFIS[perfil].avisoParcial} Não compare com um mês fechado.</div></div>`;
+    // O aviso NOMEIA os cartões em aberto. A frase antiga era fixa e
+    // descrevia agosto de 2026 para sempre — em setembro ela continuaria
+    // falando da fatura do Safra que já teria fechado.
+    const abertos=bancosEmAberto[perfil+"|"+mesAtualStr]||[];
+    const quais=abertos.length
+      ?`A fatura ${abertos.length===1?"do":"de"} ${abertos.map(banco=>esc(banco)).join(", ")} ainda não foi conferida contra a base.`
+      :`Alguma fatura deste mês ainda não foi conferida contra a base.`;
+    avisos+=`<div class="reemb-alert"><span class="reemb-alert-icon">🔵</span><div class="reemb-alert-text"><strong>Mês parcial:</strong> ${quais} O total real é maior. Não compare com um mês fechado.</div></div>`;
   }
   if(faltando.length>0){
     avisos+=`<div class="reemb-alert"><span class="reemb-alert-icon">🟡</span><div class="reemb-alert-text"><strong>Reembolso esperado não lançado:</strong> ${faltando.join(", ")}</div></div>`;
@@ -3132,8 +3162,8 @@ function renderizarCasal(){
   // então lê sempre Lucas de um lado e Julia do outro.
   const lucas=resumoPessoa(dadosPorPerfil.Lucas,mesAtual.m,mesAtual.y);
   const julia=resumoPessoa(dadosPorPerfil.Julia,mesAtual.m,mesAtual.y);
-  const parcialL=PERFIS.Lucas.mesesParciais.includes(ms);
-  const parcialJ=PERFIS.Julia.mesesParciais.includes(ms);
+  const parcialL=mesEhParcial("Lucas",ms);
+  const parcialJ=mesEhParcial("Julia",ms);
 
   const elL=document.getElementById("casal-lucas-content");
   elL.innerHTML=cardPessoa(lucas,parcialL);
