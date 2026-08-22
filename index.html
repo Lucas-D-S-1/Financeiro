@@ -609,7 +609,7 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
       <div id="inv-vazio" class="coming-soon" style="display:none">
         <div>nenhuma posição registrada</div>
         <div style="font-size:11px;max-width:420px;text-align:center;line-height:1.6">
-          Esta aba lê a guia <b>Investimentos</b> da planilha. Uma linha por
+          Esta aba lê a tabela <b>investimentos</b> da base. Uma linha por
           aplicação, escrita uma vez só:<br>
           <span style="font-family:var(--mono)">data · perfil · instituição ·
           produto · classe · indexador · taxa · aplicado · valor_manual ·
@@ -709,7 +709,7 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
     <div class="modal-label">categoria</div>
     <div class="modal-row"><select class="modal-select" id="edit-cat" style="flex:1"></select></div>
     <label class="modal-check"><input type="checkbox" id="edit-fixo"> gasto fixo / recorrente</label>
-    <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:16px;">A descrição original fica preservada. A correção vale em todas as abas e é salva na planilha, então aparece para as duas pessoas e em qualquer aparelho.</div>
+    <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:16px;">A descrição original fica preservada. A correção vale em todas as abas e é salva na base, então aparece para as duas pessoas e em qualquer aparelho.</div>
     <div class="modal-btns">
       <button class="btn-ghost" onclick="fecharModal('modal-editar')">cancelar</button>
       <button class="btn-ghost" style="color:var(--red);border-color:var(--red)" onclick="removerOverride()">resetar</button>
@@ -762,12 +762,16 @@ function removerOverride(){
 
 <script>
 const CLIENT_ID="957120309607-ai5mt8u2uets67obn6tpcq75carog7c7.apps.googleusercontent.com";
-const SHEET_ID="1NjVLm4ztpz-46vUcTRFpZ7Z-pzzD3NA0J_4XQLzewsg";
-// Escopo de escrita, e não `spreadsheets.readonly`: as correções feitas na
-// tela precisam voltar para a aba `Overrides` da planilha. Enquanto moravam só
-// no `localStorage`, a Julia editava no celular dela e o resultado não saía de
-// lá — o que inviabilizava o painel como ferramenta dos dois.
-const SCOPES="https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.profile";
+// O painel não lê mais a planilha, então não pede mais acesso a ela — e sai
+// junto o escopo mais largo que ele tinha: `spreadsheets` dá acesso a TODAS as
+// planilhas da conta, para ler uma.
+//
+// `userinfo.email` é novo e não é detalhe: sem ele o `userinfo` do Google não
+// devolve o e-mail, e é o e-mail que a Edge Function procura em `pessoas.email`
+// para decidir quem entra. O código antigo já lia `u.email` sem pedir o escopo.
+//
+// Mudar escopo faz o Google pedir consentimento de novo na próxima entrada.
+const SCOPES="openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile";
 // Este arquivo é servido publicamente. Nada de valor real, nome de terceiro ou
 // meta pessoal mora aqui — tudo isso vem da aba Config, que está atrás do
 // login. Foi por essa razão que o piso de renda saiu daqui, e vale igual para
@@ -809,7 +813,6 @@ let emailConectado="";
 // Qual conta do Google corresponde a qual perfil. Mora na Config e não aqui
 // porque e-mail é dado pessoal e este arquivo é servido publicamente.
 // Colunas: perfil, e-mail.
-const RANGE_CONTAS="Config!B86:C88";
 let contasPorEmail={};
 const dadosPorPerfil={Lucas:[],Julia:[]};
 const movimentosPorPerfil={Lucas:[],Julia:[]};
@@ -944,9 +947,9 @@ function mostrarFalhaDeCarga(erro,email){
   const semAcesso=erro&&(erro.status===403||erro.status===404);
   const caixa=document.getElementById("login-erro");
   caixa.innerHTML=semAcesso
-    ? `<strong>${esc(email)} não tem acesso à planilha.</strong>
-       Entrar no Google funcionou; o que falta é o arquivo estar compartilhado
-       com esta conta. Peça o compartilhamento e entre de novo.`
+    ? `<strong>${esc(email)} não está autorizada neste painel.</strong>
+       Entrar no Google funcionou; o que falta é esta conta estar cadastrada.
+       Mostre este e-mail para quem cuida do painel — o cadastro é uma linha.`
     : `<strong>Não deu para carregar os dados.</strong> ${esc(erro&&erro.message||erro)}`;
   caixa.classList.add("visivel");
   document.getElementById("app").style.display="none";
@@ -959,7 +962,7 @@ function logout(){
   accessToken=null;allData=[];movimentos=[];
   // A fila de pendências fica: se alguém sair antes de a rede voltar, a
   // correção ainda sobe no próximo login em vez de se perder.
-  overridesRemotos={};linhasRemotas=0;abaOverridesOk=false;
+  overridesRemotos={};linhasRemotas=0;
   dadosPorPerfil.Lucas=[];dadosPorPerfil.Julia=[];
   movimentosPorPerfil.Lucas=[];movimentosPorPerfil.Julia=[];
   document.getElementById("app").style.display="none";
@@ -967,44 +970,6 @@ function logout(){
 }
 
 // ── DADOS ─────────────────────────────────────────────────
-// `chamadaSheets` **levanta** quando a API recusa; `fetchSheet` continua
-// engolindo, porque quase toda leitura tem `.catch(()=>[])` e uma aba ausente
-// não pode derrubar o painel. A escrita é o contrário: falhar em silêncio ali
-// faria o usuário achar que corrigiu algo que nunca saiu do navegador.
-async function chamadaSheets(caminho,opcoes){
-  const r=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}${caminho}`,
-    {...opcoes,headers:{Authorization:"Bearer "+accessToken,
-      "Content-Type":"application/json",...((opcoes||{}).headers)}});
-  const corpo=await r.json().catch(()=>({}));
-  if(!r.ok)throw new Error((corpo.error&&corpo.error.message)||("HTTP "+r.status));
-  return corpo;
-}
-const sheetsGet=async range=>
-  (await chamadaSheets("/values/"+encodeURIComponent(range))).values||[];
-// RAW, nunca USER_ENTERED: a planilha guarda tudo como texto de propósito, e
-// `USER_ENTERED` transformaria "05/2026" em data e "1.234,56" em 123456.
-const sheetsPut=(range,values)=>chamadaSheets(
-  "/values/"+encodeURIComponent(range)+"?valueInputOption=RAW",
-  {method:"PUT",body:JSON.stringify({range,values})});
-
-// Levanta quando a API recusa, em vez de devolver lista vazia. A resposta de
-// um 403 é `{error:{...}}`, sem `values` — com `||[]` isso virava "a planilha
-// está vazia" e a tela mostrava um painel zerado. Foi assim que "a Julia não
-// tem acesso ao arquivo" chegou como "deu erro": nada dizia o que faltava.
-// As leituras opcionais seguem com `.catch(()=>[])` e continuam tolerantes;
-// quem não tem catch — a aba Transações — agora derruba o carregamento de
-// propósito, para a mensagem aparecer.
-async function fetchSheet(range){
-  if(window.__HARNESS_DATA__)return window.__HARNESS_DATA__[range]||[];
-  const r=await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}`,{headers:{Authorization:"Bearer "+accessToken}});
-  const corpo=await r.json().catch(()=>({}));
-  if(!r.ok){
-    const erro=new Error((corpo.error&&corpo.error.message)||("HTTP "+r.status));
-    erro.status=r.status;
-    throw erro;
-  }
-  return corpo.values||[];
-}
 function hashCurto(texto){
   let h=2166136261;
   for(const c of String(texto||"")){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}
@@ -1071,76 +1036,144 @@ function movimentosDeDados(dados){
     confianca:1,consideraGasto:true}));
 }
 
+// ── A CARGA, QUE AGORA VEM DO POSTGRES ────────────────────
+//
+// Até 21/08/2026 esta função fazia 17 leituras da planilha, e a planilha era o
+// fim de uma cadeia de cinco etapas manuais: o gasto lançado pelo Telegram só
+// aparecia aqui depois que alguém rodasse dois scripts na própria máquina.
+//
+// Agora é uma chamada à Edge Function `painel`, que lê as views do Postgres ao
+// vivo. O cálculo — rateio, projeção de parcela, mês de caixa, acerto do casal
+// — mora em SQL e foi conferido linha a linha contra o Python que o fazia
+// antes.
+//
+// O QUE **NÃO** MUDOU, DE PROPÓSITO
+//
+// O resto do painel continua recebendo arrays de células, na mesma ordem de
+// colunas de antes. As views devolvem exatamente essas colunas, então a
+// conversão abaixo é posicional e nada mais — `parseLinha`, `parseMovLinha`,
+// `lerConfig` e os cálculos da tela seguem intocados.
+//
+// Foi a escolha deliberada: trocar a origem dos dados é uma mudança; trocar a
+// origem **e** o formato de tudo que consome seria duas, e a segunda não tem
+// como ser conferida olhando a tela.
+const PAINEL_API="https://rxfeyrnayhvyfonuxddt.supabase.co/functions/v1/painel";
+
+// A ordem das colunas é contrato com `parseLinha` e `parseMovLinha`. Está
+// escrita aqui e nas views; se divergirem, o painel mostra o campo errado sem
+// erro nenhum — por isso os nomes, e não índices soltos.
+const COLS_TX=["data","desc","cat","valor","tipo","mes","ano","cartao",
+  "parcAtual","parcTotal","mesFinal","mesCaixa","origem","id","produto",
+  "direcao","fixo"];
+const COLS_MOV=["id","data","descricao_original","descricao","categoria",
+  "direcao","debito","credito","banco","produto","tipo","fixo","mes","fatura",
+  "origem","confianca","considera_gasto"];
+
+const emLinhas=(objs,cols)=>(objs||[]).map(o=>cols.map(c=>{
+  const v=o[c];
+  return v===null||v===undefined?"":(typeof v==="boolean"?(v?"TRUE":"FALSE"):String(v));
+}));
+
+async function buscarPainel(){
+  // A prévia local serve o mesmo objeto que a Edge Function devolveria, para
+  // a interface ser testável sem login e sem publicar dado bancário. Antes o
+  // harness imitava a API do Sheets faixa por faixa; agora imita uma resposta
+  // só, que é bem menos superfície para divergir.
+  if(window.__HARNESS_DATA__)return window.__HARNESS_DATA__;
+  const r=await fetch(PAINEL_API,{headers:{Authorization:"Bearer "+accessToken}});
+  const corpo=await r.json().catch(()=>({}));
+  if(!r.ok){
+    // A função explica a recusa — conta fora de `pessoas.email`, token
+    // expirado. Repassar o texto dela é melhor que "HTTP 403": a pessoa lê o
+    // que fazer em vez de procurar quem saiba.
+    const e=new Error(corpo.detalhe||corpo.erro||("HTTP "+r.status));
+    e.status=r.status;
+    throw e;
+  }
+  return corpo;
+}
+
 async function carregarTudo(){
-  // A aba da Julia pode não existir ainda; o catch evita derrubar o painel todo.
-  const[txRows,juliaRows,splitRows,cfgL,compL,cfgJ,compJ,movL,movJ,saldos,ovRows,reembRows,pcRows,invRows,idxRows,contaRows,cotRows]=await Promise.all([
-    fetchSheet("Transações!A5:Q1000"),
-    fetchSheet("'Transações Julia'!A5:Q1000").catch(()=>[]),
-    fetchSheet("Config!C9").catch(()=>[]),
-    fetchSheet(PERFIS.Lucas.orcamento).catch(()=>[]),
-    fetchSheet(PERFIS.Lucas.compromissos).catch(()=>[]),
-    fetchSheet(PERFIS.Julia.orcamento).catch(()=>[]),
-    fetchSheet(PERFIS.Julia.compromissos).catch(()=>[]),
-    fetchSheet("Movimentações!A2:Q2000").catch(()=>[]),
-    fetchSheet("'Movimentações Julia'!A2:Q2000").catch(()=>[]),
-    fetchSheet("Saldos!A2:F100").catch(()=>[]),
-    fetchSheet(RANGE_OVERRIDES).catch(()=>[]),
-    fetchSheet(RANGE_REEMBOLSOS).catch(()=>[]),
-    fetchSheet(RANGE_PARCELAS_CASAL).catch(()=>[]),
-    fetchSheet(RANGE_INVEST).catch(()=>[]),
-    fetchSheet(RANGE_INDICES).catch(()=>[]),
-    fetchSheet(RANGE_CONTAS).catch(()=>[]),
-    fetchSheet(RANGE_COTACOES).catch(()=>[]),
-  ]);
-  dadosPorPerfil.Lucas=txRows.filter(r=>r[0]).map(parseLinha);
-  dadosPorPerfil.Julia=juliaRows.filter(r=>r[0]).map(parseLinha);
-  movimentosPorPerfil.Lucas=movL.filter(r=>r[0]&&r[0]!=="id").map(parseMovLinha);
-  movimentosPorPerfil.Julia=movJ.filter(r=>r[0]&&r[0]!=="id").map(parseMovLinha);
-  if(!movimentosPorPerfil.Lucas.length){
-    movimentosPorPerfil.Lucas=movimentosDeDados(dadosPorPerfil.Lucas);
-    ledgerIncompletoPorPerfil.Lucas=true;
-  }
-  if(!movimentosPorPerfil.Julia.length){
-    movimentosPorPerfil.Julia=movimentosDeDados(dadosPorPerfil.Julia);
-    ledgerIncompletoPorPerfil.Julia=true;
-  }
-  saldosPorPerfil.Lucas=saldos.filter(r=>r[0]==="Lucas").map(parseSaldo);
-  saldosPorPerfil.Julia=saldos.filter(r=>r[0]==="Julia").map(parseSaldo);
-  SPLIT_LUCAS=parseFloat(String((splitRows[0]||[])[0]||"").replace("%","").replace(",","."))||0;
-  if(SPLIT_LUCAS>1)SPLIT_LUCAS/=100;   // a Config guarda 54,77%; aqui vira 0,5477
+  const d=await buscarPainel();
+  const so=(lista,quem)=>(lista||[]).filter(x=>x.person===quem);
+
+  dadosPorPerfil.Lucas=emLinhas(so(d.transacoes,"Lucas"),COLS_TX).map(parseLinha);
+  dadosPorPerfil.Julia=emLinhas(so(d.transacoes,"Julia"),COLS_TX).map(parseLinha);
+  movimentosPorPerfil.Lucas=emLinhas(so(d.movimentacoes,"Lucas"),COLS_MOV).map(parseMovLinha);
+  movimentosPorPerfil.Julia=emLinhas(so(d.movimentacoes,"Julia"),COLS_MOV).map(parseMovLinha);
+  // O ledger vazio deixou de ser um estado possível: ele vem da mesma base que
+  // o feed. O aviso de "ledger incompleto" fica para não sumir em silêncio se
+  // uma view voltar vazia por engano.
+  ["Lucas","Julia"].forEach(q=>{
+    if(!movimentosPorPerfil[q].length&&dadosPorPerfil[q].length){
+      movimentosPorPerfil[q]=movimentosDeDados(dadosPorPerfil[q]);
+      ledgerIncompletoPorPerfil[q]=true;
+    }
+  });
+
+  const P=d.parametros||{};
+  const par=P.parametros||{};
+  const pessoas=P.pessoas||[];
+  const doPerfil=q=>pessoas.find(p=>p.person===q)||{};
+
+  saldosPorPerfil.Lucas=(d.saldos||[]).filter(s=>s.person==="Lucas")
+    .map(s=>({perfil:"Lucas",banco:s.bank,produto:s.product||"conta",
+      saldo:Number(s.saldo)||0,atualizadoEm:s.atualizado_em||"",fonte:s.fonte||""}));
+  saldosPorPerfil.Julia=(d.saldos||[]).filter(s=>s.person==="Julia")
+    .map(s=>({perfil:"Julia",banco:s.bank,produto:s.product||"conta",
+      saldo:Number(s.saldo)||0,atualizadoEm:s.atualizado_em||"",fonte:s.fonte||""}));
+
+  SPLIT_LUCAS=Number(doPerfil("Lucas").rateio)||0;
+
+  const ovRows=emLinhas(d.overrides,COLS_OVERRIDES);
   overridesRemotos=linhasParaOverrides(ovRows);
   linhasRemotas=ovRows.length;
-  parcelasCasal=lerParcelasCasal(pcRows);
-  cotacoes=lerCotacoes(cotRows);
-  investimentos=lerInvestimentos(invRows);
-  CDI_AA=taxaNum((idxRows[0]||[])[0]);
-  POUP_AM=taxaNum((idxRows[1]||[])[0]);
-  // Busca as séries só a partir da aplicação mais antiga: pedir dez anos de
-  // CDI para calcular doze dias seria desperdício, e o SGS recusa janelas
-  // muito largas.
+
+  // A planilha guardava os valores num campo só, separados por `;`. A tabela
+  // tem uma linha por valor, que é a forma certa — e aqui elas voltam a ser
+  // agrupadas por loja para `lerParcelasCasal` não precisar mudar.
+  const porLoja={};
+  (P.parcelas_casal||[]).forEach(x=>{
+    const k=x.person+"|"+String(x.loja||"").toUpperCase();
+    (porLoja[k]=porLoja[k]||{person:x.person,loja:x.loja,valores:[],divisao:x.divisao})
+      .valores.push(Number(x.valor));
+  });
+  parcelasCasal=lerParcelasCasal(Object.values(porLoja).map(x=>
+    [x.person,x.loja,x.valores.map(v=>v.toFixed(2).replace(".",",")).join(";"),
+     x.divisao==="integral"?"integral":"casal"]));
+
+  cotacoes=lerCotacoes((d.cotacoes||[]).map(c=>[c.ticker,String(c.preco).replace(".",","),c.nome||""]));
+  investimentos=lerInvestimentos((d.investimentos||[]).map(i=>[
+    i.data?i.data.split("-").reverse().join("/"):"",i.person,i.instituicao,
+    i.produto,i.classe,i.indexador,String(i.taxa).replace(".",","),
+    String(i.aplicado).replace(".",","),
+    i.valor_manual==null?"":String(i.valor_manual).replace(".",","),
+    i.tributacao||"",i.observacao||"",i.ticker||"",
+    i.quantidade==null?"":String(i.quantidade).replace(".",","),
+    i.atualizado_em||"",i.operacao||"compra"]));
+
+  CDI_AA=Number(par.cdi_aa)||0;
+  POUP_AM=Number(par.poup_am)||0;
   const maisAntiga=investimentos.map(i=>i.data)
     .sort((a,b)=>dataOrd(a).localeCompare(dataOrd(b)))[0];
   if(maisAntiga)await carregarSeries(maisAntiga);
-  reembEsperados=reembRows.map(r=>String((r||[])[0]||"").trim().toLowerCase()).filter(Boolean);
-  lerConfig("Lucas",cfgL,compL);
-  lerConfig("Julia",cfgJ,compJ);
 
-  // Sem escolha própria guardada, o painel abre no perfil de quem entrou. A
-  // Julia caía no painel do Lucas no primeiro acesso e precisava descobrir
-  // sozinha o chip de troca — parecia dado errado, não configuração.
-  contasPorEmail={};
-  (contaRows||[]).forEach(r=>{
-    const p=String((r||[])[0]||"").trim();
-    const e=String(r[1]||"").trim().toLowerCase();
-    if(p&&e&&PERFIS[p])contasPorEmail[e]=p;
-  });
-  if(!perfilEscolhido&&contasPorEmail[emailConectado]){
-    perfil=contasPorEmail[emailConectado];
-  }
+  // `reembEsperados` vinha de `Config!B49:B60`, que está vazio desde que a
+  // aba foi criada. Fica como lista vazia até alguém precisar dela de novo —
+  // e aí ela nasce como tabela, não como faixa de células.
+  reembEsperados=[];
+
+  // Orçamento e renda piso, no formato de duas colunas que `lerConfig` lê.
+  const cfgDe=q=>(d.config||[]).filter(c=>c.person===q).map(c=>[c.category,c.valor]);
+  const compDe=q=>(P.compromissos||[]).filter(c=>c.person===q)
+    .map(c=>[c.descricao,String(c.valor).replace(".",","),c.category,c.rateio||""]);
+  lerConfig("Lucas",cfgDe("Lucas"),compDe("Lucas"));
+  lerConfig("Julia",cfgDe("Julia"),compDe("Julia"));
+
+  // Quem entrou decide o painel inicial. A função já resolveu isso contra
+  // `pessoas.email` — o painel não precisa mais da tabela de contas.
+  if(!perfilEscolhido&&PERFIS[d.perfil])perfil=d.perfil;
   aplicarPerfil();
-  // O que estiver pendente no `localStorage` sobe agora. É por aqui que as
-  // edições feitas antes desta versão — as 11 dele de 18/08 — migram para a
-  // planilha sem ninguém precisar refazê-las.
   sincronizarOverrides();
 }
 
@@ -1192,8 +1225,8 @@ function aplicarPerfil(){
   document.getElementById("perfil-aviso").innerHTML=
     `<span>👤</span><span>você está vendo o painel da <strong>${perfil}</strong>.`+
     (semConfig
-      ? ` A Config dela ainda não foi preenchida na planilha — sem renda piso e sem compromissos fixos, o saldo aparece como “—” e as categorias vêm sem meta.`
-      : ` Renda piso, orçamento e compromissos fixos vêm do bloco dela na aba Config. O aluguel e as contas de casa entram pela parte que cabe a ela: quem adianta o dinheiro é o Lucas.`)+
+      ? ` A configuração dela ainda não foi preenchida — sem renda piso e sem compromissos fixos, o saldo aparece como “—” e as categorias vêm sem meta.`
+      : ` Renda piso, orçamento e compromissos fixos vêm da configuração dela na base. O aluguel e as contas de casa entram pela parte que cabe a ela: quem adianta o dinheiro é o Lucas.`)+
     `</span>`;
   document.querySelectorAll(".perfil-opt[data-perfil]").forEach(b=>
     b.classList.toggle("ativo",b.dataset.perfil===perfil));
@@ -1815,14 +1848,10 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 // As colunas são as mesmas do CSV de `exportarEdicoes`, de propósito: o
 // `reclassificar.py` já sabe ler esse formato, e a mesma aba serve de fila de
 // revisão para a arquitetura do Telegram.
-const ABA_OVERRIDES="Overrides";
-const RANGE_OVERRIDES="Overrides!A2:L2000";
 // Quem o Lucas espera que reembolse. São nomes de terceiros, então moram na
 // Config e não neste arquivo. Uma coluna, um nome por linha.
-const RANGE_REEMBOLSOS="Config!B49:B60";
 // Compras parceladas que são do casal, ou que são inteiras do outro. Colunas:
 // perfil, loja normalizada, valores separados por `;`, rateio.
-const RANGE_PARCELAS_CASAL="Config!B63:E80";
 
 // ── INVESTIMENTOS ─────────────────────────────────────────
 // A planilha guarda o que não dá para deduzir: quanto entrou, quando, e a
@@ -1839,7 +1868,6 @@ const RANGE_PARCELAS_CASAL="Config!B63:E80";
 // do CDI" e 12,5 para "12,5% ao ano" prefixado. `valor_manual`, quando
 // preenchido, manda sobre o cálculo — é a saída para renda variável, onde
 // nenhuma fórmula acerta o preço.
-const RANGE_INVEST="Investimentos!A2:O300";
 // Cotação de ação, FII e ETF. A planilha busca com GOOGLEFINANCE e o painel
 // só lê — sem chave, sem CORS, sem custo. Uma linha por ativo, e não por
 // aporte: três compras do mesmo FII compartilham o mesmo preço.
@@ -1848,12 +1876,10 @@ const RANGE_INVEST="Investimentos!A2:O300";
 // estável, preço não. Com quantidade, o valor se atualiza para sempre; com
 // valor digitado, a carteira envelhece parecendo atual — que é o pior estado
 // possível para um número na tela.
-const RANGE_COTACOES="Cotacoes!A2:C60";
 let cotacoes={};
 // Rede de segurança, não fonte principal: CDI ao ano e poupança ao mês para
 // quando as séries do Banco Central não vierem. Sem série e sem isto, o
 // painel mostra o aplicado e diz que não estimou — nunca inventa taxa.
-const RANGE_INDICES="Config!B83:B84";
 let investimentos=[];
 let CDI_AA=0, POUP_AM=0;
 
@@ -2104,7 +2130,8 @@ function posicaoHoje(inv,hoje){
   // Três fontes de verdade, nesta ordem. Cada uma envelhece diferente, e a
   // tela precisa dizer de qual veio: um número de mercado e um digitado há
   // dois meses não podem ter a mesma aparência.
-  //   1. ticker + quantidade -> cotação da planilha, atualiza sozinho
+  //   1. ticker + quantidade -> cotação da tabela `cotacoes`, atualizada por
+  //      um gatilho de tempo na nuvem
   //   2. indexador           -> série do Banco Central, atualiza sozinho
   //   3. valor digitado      -> congela, e o painel mostra a idade
   const cot=inv.ticker?cotacoes[inv.ticker]:null;
@@ -2205,7 +2232,7 @@ function renderFluxoInvest(temPosicao){
       </div>`;}).join("")+
     (temPosicao?"":`<div class="inv-ativo-meta" style="margin-top:10px;text-transform:none;letter-spacing:0">
       Isto é o que entrou e saiu, não quanto vale hoje. Registre uma linha na
-      guia <b>Investimentos</b> da planilha para o painel calcular rentabilidade.</div>`);
+      aba de investimentos pelo Telegram para o painel calcular rentabilidade.</div>`);
 
   // Resgate classificado como `Entradas` conta como receita nova no mês, e
   // não é: é dinheiro tirado do próprio investimento. Vale avisar com o
@@ -2445,9 +2472,8 @@ function serieComparada(posicoes,fimNum,maxPontos){
 // O painel lê a base já confirmada.
 const COLS_OVERRIDES=["perfil","id","data","banco","produto","valor",
   "desc_original","desc_novo","cat_original","cat_nova","fixo","editado_em"];
-let overridesRemotos={};      // o que a planilha confirmou
+let overridesRemotos={};      // o que a base confirmou
 let linhasRemotas=0;          // linhas ocupadas lá, para limpar o que encolher
-let abaOverridesOk=false;
 let overridesSync={estado:"parado",erro:""};
 let sincronizando=false,ressincronizar=false;
 
@@ -2489,46 +2515,8 @@ function linhasParaOverrides(linhas){
   });
   return mapa;
 }
-function overridesParaLinhas(mapa){
-  const base=lancamentoPorChave();
-  return Object.keys(mapa).sort().map(k=>{
-    const o=mapa[k],b=base[k]||{},ctx=o.ctx||[],corte=k.indexOf(":");
-    const valor=b.debito!==undefined?(b.debito||0)+(b.credito||0)
-              :b.valor!==undefined?b.valor:undefined;
-    return[k.slice(0,corte),k.slice(corte+1),
-      b.data||ctx[0]||"",b.banco||b.cartao||ctx[1]||"",b.produto||ctx[2]||"",
-      valor!==undefined?valor.toFixed(2).replace(".",","):(ctx[3]||""),
-      b.descOriginal||b.desc||ctx[4]||"",o.desc||"",
-      b.cat||ctx[5]||"",o.cat||"",
-      o.fixo?"fixo":"nao fixo",o.atualizadoEm||""];
-  });
-}
-
-async function garantirAbaOverrides(){
-  if(abaOverridesOk)return;
-  const meta=await chamadaSheets("?fields=sheets.properties.title");
-  const existe=(meta.sheets||[]).some(s=>s.properties&&s.properties.title===ABA_OVERRIDES);
-  if(!existe){
-    await chamadaSheets(":batchUpdate",{method:"POST",
-      body:JSON.stringify({requests:[{addSheet:{properties:{title:ABA_OVERRIDES}}}]})});
-  }
-  await sheetsPut(`${ABA_OVERRIDES}!A1:L1`,[COLS_OVERRIDES]);
-  abaOverridesOk=true;
-}
-
-// Reescreve o bloco inteiro em vez de mexer numa linha só: com dezenas de
-// linhas o custo é o mesmo e não há índice de linha para manter em dia.
-// O bloco é preenchido com linhas vazias até o tamanho anterior, senão o que
-// foi removido continuaria na planilha depois da última linha escrita.
-async function escreverOverrides(mapa,minLinhas){
-  const linhas=overridesParaLinhas(mapa);
-  const alvo=Math.max(linhas.length,minLinhas||0,1);
-  while(linhas.length<alvo)linhas.push(COLS_OVERRIDES.map(()=>""));
-  await sheetsPut(`${ABA_OVERRIDES}!A2:L${1+alvo}`,linhas);
-}
-
 async function sincronizarOverrides(){
-  // Na prévia local não há planilha: a fila é absorvida na memória para o
+  // Na prévia local não há back-end: a fila é absorvida na memória para o
   // fluxo de edição continuar testável sem login e sem publicar dado bancário.
   if(window.__HARNESS_DATA__){
     const p=getPendentes();
@@ -2542,27 +2530,50 @@ async function sincronizarOverrides(){
   }
   if(!accessToken||!Object.keys(getPendentes()).length)return;
   // Uma sincronização de cada vez. Cliques seguidos na tabela viram uma
-  // segunda rodada no fim, não duas escritas concorrentes no mesmo bloco.
+  // segunda rodada no fim, não duas escritas concorrentes.
   if(sincronizando){ressincronizar=true;return;}
   sincronizando=true;
   overridesSync={estado:"enviando",erro:""};
   atualizarBotaoEdicoes();
   try{
-    await garantirAbaOverrides();
-    // Relê antes de escrever: a outra pessoa pode ter editado no intervalo.
-    // O desempate é por chave e pela hora da edição, não pelo bloco todo —
-    // assim os dois editando ao mesmo tempo não se apagam.
-    const linhas=await sheetsGet(RANGE_OVERRIDES);
-    const remoto=linhasParaOverrides(linhas);
     const pend=getPendentes();
+    const base=lancamentoPorChave();
+
+    // Uma linha por edição, e não o bloco inteiro reescrito.
+    //
+    // Na planilha era o bloco: não havia índice de linha para manter em dia, e
+    // reler-alterar-reescrever era a única forma de não corromper o resto.
+    // Aqui a chave é o `transaction_id`, então cada edição vai sozinha — dois
+    // editando ao mesmo tempo não se sobrescrevem, e some a releitura que
+    // existia só para desempatar.
+    const linhas=[];
     Object.keys(pend).forEach(k=>{
-      const atual=remoto[k],novo=pend[k];
-      if(atual&&atual.atualizadoEm&&String(novo.atualizadoEm)<String(atual.atualizadoEm))return;
-      if(novo.removido)delete remoto[k];else remoto[k]={...novo,ctx:(atual||{}).ctx};
+      const o=pend[k],ctx=o.ctx||[],corte=k.indexOf(":");
+      const id=k.slice(corte+1),b=base[k]||{};
+      if(o.removido){linhas.push({transaction_id:id,remover:true});return;}
+      linhas.push({
+        transaction_id:id,
+        description_nova:o.desc||null,
+        category_nova:o.cat||null,
+        // Tri-estado: `null` é "não opinou", e só "disse que não é fixo" deve
+        // sobrepor o que o pipeline deduziu.
+        fixo:o.fixo===undefined?null:!!o.fixo,
+        description_original:b.descOriginal||b.desc||ctx[4]||"",
+        category_original:b.cat||ctx[5]||"",
+      });
     });
-    await escreverOverrides(remoto,Math.max(linhas.length,linhasRemotas));
-    overridesRemotos=remoto;
-    linhasRemotas=Object.keys(remoto).length;
+
+    const r=await fetch(PAINEL_API+"/overrides",{method:"POST",
+      headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json"},
+      body:JSON.stringify(linhas)});
+    const corpo=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(corpo.detalhe||corpo.erro||("HTTP "+r.status));
+
+    Object.keys(pend).forEach(k=>{
+      if(pend[k].removido)delete overridesRemotos[k];
+      else overridesRemotos[k]={...pend[k],ctx:(overridesRemotos[k]||{}).ctx};
+    });
+    linhasRemotas=Object.keys(overridesRemotos).length;
     setPendentes({});
     overridesSync={estado:"sincronizado",erro:""};
   }catch(erro){
@@ -2573,6 +2584,7 @@ async function sincronizarOverrides(){
     if(ressincronizar){ressincronizar=false;sincronizarOverrides();}
   }
 }
+
 function applyOverride(r){
   const ov=getOverrides()[chaveOverride(r.id)];
   if(!ov)return r;
@@ -2665,11 +2677,11 @@ function atualizarBotaoEdicoes(){
   btn.classList.toggle("vazio",!n);
   const estado=overridesSync.estado;
   btn.title=estado==="erro"
-    ?`${naFila} ediç${naFila===1?"ão":"ões"} só neste navegador — a planilha recusou: ${overridesSync.erro}`
-    :estado==="enviando"?"salvando na planilha…"
+    ?`${naFila} ediç${naFila===1?"ão":"ões"} só neste navegador — a base recusou: ${overridesSync.erro}`
+    :estado==="enviando"?"salvando…"
     :estado==="previa"?"prévia local: as edições não saem daqui"
-    :naFila?`${naFila} ediç${naFila===1?"ão":"ões"} aguardando envio para a planilha`
-    :"salvas na aba Overrides da planilha";
+    :naFila?`${naFila} ediç${naFila===1?"ão":"ões"} aguardando envio`
+    :"salvas na base";
   btn.classList.toggle("nao-sincronizado",!!naFila&&estado!=="previa");
 }
 
