@@ -27,6 +27,7 @@ button{cursor:pointer;}
 .google-btn{display:flex;align-items:center;gap:12px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:14px 28px;border-radius:var(--r2);font-family:var(--sans);font-size:15px;transition:all 0.2s;}
 .google-btn:hover{background:var(--bg2);border-color:var(--accent);color:var(--accent);}
 .google-btn svg{width:20px;height:20px;}
+#login-entrando{display:none;font-family:var(--mono);font-size:12px;letter-spacing:0.08em;color:var(--muted);}
 
 /* ── APP SHELL ── */
 #app{display:none;}
@@ -456,10 +457,11 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
 <div id="login-screen">
   <div class="login-logo">agente financeiro</div>
   <div class="login-title">Finanças do <span>Lucas</span></div>
-  <button class="google-btn" onclick="iniciarLogin()">
+  <button class="google-btn" id="btn-entrar" onclick="iniciarLogin()">
     <svg viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
     Entrar com Google
   </button>
+  <div id="login-entrando">entrando&hellip;</div>
   <div id="login-erro"></div>
 </div>
 
@@ -470,7 +472,7 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
     <div class="header-controls">
       <div class="month-nav">
         <button onclick="navMes(-1)">&#8592;</button>
-        <span id="month-label">04/2026</span>
+        <span id="month-label"></span>
         <button onclick="navMes(1)">&#8594;</button>
       </div>
       <div class="cartao-filter">
@@ -839,12 +841,18 @@ let catsVisiveis=[];
 // Rateio das despesas marcadas "casal", vindo de Config!C9.
 let SPLIT_LUCAS=0;
 let tokenClient,accessToken,allData=[],orcamentos={};
+// Quando o token guardado deixa de valer, em epoch ms.
+let tokenExpiraEm=0;
 let movimentos=[];
 // A Config lida da planilha, por pessoa. Guardada à parte para trocar de perfil
 // não precisar de nova ida à rede.
 const configPorPerfil={Lucas:{compromissos:[],orcamentos:{},piso:0},
                        Julia:{compromissos:[],orcamentos:{},piso:0}};
-let mesAtual={m:4,y:2026};
+// O mês em que a tela abre. Nasce do calendário e não de uma data escrita à
+// mão: um valor fixo aqui é o que fazia o painel abrir em abril/2026 enquanto
+// os dados carregavam, e continuar em abril se a carga demorasse ou falhasse.
+const mesDeHoje=()=>{const d=new Date();return{m:d.getMonth()+1,y:d.getFullYear()};};
+let mesAtual=mesDeHoje();
 let direcaoFiltro="";
 // A fatura é um recorte diferente da competência: ela junta as parcelas do mês
 // com as compras à vista feitas depois do fechamento anterior, que ficam na
@@ -888,35 +896,175 @@ function rendaDoMes(ms){
 }
 const cartaoFil=()=>document.getElementById("cartao-sel").value;
 
-// ── LOGIN ─────────────────────────────────────────────────
-function iniciarLogin(){
-  const s=document.createElement("script");
-  s.src="https://accounts.google.com/gsi/client";
-  s.onload=()=>{
-    tokenClient=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,callback:async r=>{
-      // Falha de autorização precisa aparecer. Voltar em silêncio aqui fazia
-      // o botão "Entrar com Google" parecer quebrado: a pessoa clicava, a
-      // tela não mudava, e não havia nada escrito para ela repetir a quem
-      // pudesse ajudar.
-      if(r.error){mostrarFalhaDeAutorizacao(r);return;}
-      accessToken=r.access_token;
-      const u=await fetch("https://www.googleapis.com/oauth2/v3/userinfo",{headers:{Authorization:"Bearer "+accessToken}}).then(r=>r.json());
-      // Quem entrou não é o mesmo que o painel está mostrando: a conta do
-      // Google fica no menu, e o chip mostra o perfil selecionado.
-      emailConectado=String(u.email||"").trim().toLowerCase();
-      document.getElementById("perfil-conta").textContent="conectado como "+(u.email||u.given_name||u.name||"—");
-      document.getElementById("login-screen").style.display="none";
-      document.getElementById("app").style.display="block";
-      document.getElementById("toggle-label").textContent="líquido";
-      try{
-        await carregarTudo();
-      }catch(erro){
-        mostrarFalhaDeCarga(erro,u.email||"");
-      }
-    }});
-    tokenClient.requestAccessToken();
-  };
-  document.head.appendChild(s);
+// ── LOGIN, E A SESSÃO QUE SOBREVIVE AO RECARREGAR ─────────
+// `initTokenClient` é o fluxo implícito do Google: devolve `access_token` de
+// ~1 h e **nenhum** refresh token. Manter alguém conectado entre visitas é,
+// por isso, duas coisas e não uma:
+//
+//   1. guardar o token enquanto ele vale, para recarregar a página não custar
+//      nem uma ida ao Google;
+//   2. quando vencer, pedir outro com `prompt:""` — sem tela de consentimento.
+//      O Google concede se a sessão da pessoa no navegador ainda estiver de pé
+//      e o consentimento já tiver sido dado antes. Quando recusa, a tela de
+//      entrada volta como sempre foi.
+//
+// O token fica no `localStorage`, legível por qualquer script desta origem. O
+// escopo dele é `openid` + `userinfo.email` + `userinfo.profile` e mais nada:
+// quem o roubasse descobriria o e-mail de quem entrou — não entraria no
+// painel, porque a Edge Function confere a conta contra `pessoas.email` a cada
+// chamada, e não alcançaria mais nada da conta Google. O escopo de planilha,
+// que dava acesso a *todas* as planilhas da conta, saiu em 21/08/2026; guardar
+// aquele token teria sido outra conversa.
+const SESSAO="painelSessao";
+// Folga para o token não vencer no meio de uma carga que já começou.
+const SESSAO_MARGEM_MS=120000;
+
+function sessaoGuardada(){
+  try{return JSON.parse(localStorage.getItem(SESSAO)||"null");}catch{return null;}
+}
+const tokenAindaVale=s=>!!(s&&s.token&&s.expira>Date.now()+SESSAO_MARGEM_MS);
+function guardarSessao(conta){
+  try{localStorage.setItem(SESSAO,JSON.stringify(
+    {token:accessToken,expira:tokenExpiraEm,email:emailConectado,conta}));}catch{}
+}
+function esquecerSessao(){try{localStorage.removeItem(SESSAO);}catch{}}
+
+// O script do Google entra uma vez só, sob demanda. Quem volta com token ainda
+// válido nem chega a baixá-lo — o painel abre sem tocar em accounts.google.com.
+let gisCarregando;
+function carregarGIS(){
+  if(!gisCarregando)gisCarregando=new Promise((ok,falha)=>{
+    const s=document.createElement("script");
+    s.src="https://accounts.google.com/gsi/client";
+    s.onload=ok;
+    // Guardar a promessa rejeitada faria toda tentativa seguinte falhar sem
+    // nem tentar. Esquecê-la deixa o segundo clique valer alguma coisa.
+    s.onerror=()=>{gisCarregando=null;falha(new Error("não deu para carregar o login do Google"));};
+    document.head.appendChild(s);
+  });
+  return gisCarregando;
+}
+
+// Um cliente só, usado pelo botão e pela renovação silenciosa. O callback do
+// GIS não diz qual das duas pediu o token, então quem pede deixa aqui a função
+// que quer de volta.
+let entregarToken=null;
+function responder(r){const f=entregarToken;entregarToken=null;if(f)f(r);}
+async function prepararTokenClient(){
+  await carregarGIS();
+  if(!tokenClient)tokenClient=google.accounts.oauth2.initTokenClient({
+    client_id:CLIENT_ID,scope:SCOPES,
+    callback:responder,
+    // Erros que não são do OAuth — pop-up bloqueado, janela fechada antes de
+    // concluir — chegam por aqui e não pelo callback. Sem isto a promessa
+    // ficaria pendurada e a tela pararia no "entrando…".
+    error_callback:e=>responder({error:(e&&e.type)||"popup_failed_to_open"}),
+  });
+  return tokenClient;
+}
+async function pedirToken(opcoes){
+  const cli=await prepararTokenClient();
+  return new Promise(ok=>{entregarToken=ok;cli.requestAccessToken(opcoes);});
+}
+// `prompt:""` não abre janela nenhuma. Quando o Google recusa ele costuma
+// responder pelo callback, mas há casos — cookie de terceiro bloqueado — em
+// que nada volta; sem o prazo a tela ficaria em "entrando…" para sempre.
+function pedirTokenEmSilencio(){
+  return Promise.race([
+    pedirToken({prompt:""}),
+    new Promise(ok=>setTimeout(()=>ok({error:"sem_resposta"}),8000)),
+  ]);
+}
+
+function mostrarEntrando(){
+  document.getElementById("btn-entrar").style.display="none";
+  document.getElementById("login-entrando").style.display="block";
+}
+function mostrarTelaDeEntrada(){
+  document.getElementById("app").style.display="none";
+  document.getElementById("login-screen").style.display="flex";
+  document.getElementById("login-entrando").style.display="none";
+  document.getElementById("btn-entrar").style.display="";
+}
+function mostrarApp(rotulo){
+  // Quem entrou não é o mesmo que o painel está mostrando: a conta do Google
+  // fica no menu, e o chip mostra o perfil selecionado.
+  document.getElementById("perfil-conta").textContent="conectado como "+rotulo;
+  document.getElementById("login-screen").style.display="none";
+  document.getElementById("app").style.display="block";
+  document.getElementById("toggle-label").textContent="líquido";
+}
+
+// Clique no "Entrar com Google": é o único caminho que pode mostrar consentimento.
+async function iniciarLogin(){
+  mostrarEntrando();
+  let r;
+  // Sem isto, uma falha ao baixar o script do Google deixaria a tela parada em
+  // "entrando…", sem botão e sem explicação.
+  try{ r=await pedirToken({}); }
+  catch(e){ mostrarTelaDeEntrada(); mostrarFalhaDeAutorizacao({error:"gis_indisponivel"}); return; }
+  // Falha de autorização precisa aparecer. Voltar em silêncio aqui fazia o
+  // botão parecer quebrado: a pessoa clicava, a tela não mudava, e não havia
+  // nada escrito para ela repetir a quem pudesse ajudar.
+  if(r.error){mostrarTelaDeEntrada();mostrarFalhaDeAutorizacao(r);return;}
+  await entrarComToken(r);
+}
+
+// Daqui para a frente tanto faz de onde veio o token — botão, renovação
+// silenciosa ou sessão guardada.
+async function entrarComToken(r){
+  accessToken=r.access_token;
+  // `expires_in` vem em segundos, e na prática é 3599.
+  tokenExpiraEm=Date.now()+(Number(r.expires_in)||3600)*1000;
+  const u=await fetch("https://www.googleapis.com/oauth2/v3/userinfo",{headers:{Authorization:"Bearer "+accessToken}}).then(r=>r.json());
+  emailConectado=String(u.email||"").trim().toLowerCase();
+  const conta=u.email||u.given_name||u.name||"—";
+  guardarSessao(conta);
+  mostrarApp(conta);
+  await carregarComSessao(conta);
+}
+
+// Uma renovação silenciosa por queda de token, não mais: se ela também falhar,
+// insistir só faria a tela piscar.
+let renovando=false;
+async function carregarComSessao(conta){
+  try{
+    await carregarTudo();
+  }catch(erro){
+    // 401 é token vencido ou revogado — a Edge Function distingue isso de
+    // "conta não autorizada", que é 403. O primeiro caso a pessoa não precisa
+    // nem ver; o segundo ela precisa ler.
+    if(erro&&erro.status===401&&!renovando){
+      renovando=true;
+      const r=await pedirTokenEmSilencio();
+      renovando=false;
+      if(!r.error){await entrarComToken(r);return;}
+    }
+    mostrarFalhaDeCarga(erro,conta);
+  }
+}
+
+// Chamada no carregamento da página. Quem nunca entrou neste navegador não vê
+// diferença nenhuma: sai daqui na primeira linha e a tela de entrada aparece.
+async function retomarSessao(){
+  try{ await tentarRetomarSessao(); }
+  catch(erro){ esquecerSessao(); mostrarTelaDeEntrada(); }
+}
+async function tentarRetomarSessao(){
+  const s=sessaoGuardada();
+  if(!s)return;
+  mostrarEntrando();
+  if(tokenAindaVale(s)){
+    accessToken=s.token;
+    tokenExpiraEm=s.expira;
+    emailConectado=s.email||"";
+    mostrarApp(s.conta||s.email||"—");
+    await carregarComSessao(s.conta||s.email||"");
+    return;
+  }
+  const r=await pedirTokenEmSilencio();
+  if(r.error){esquecerSessao();mostrarTelaDeEntrada();return;}
+  await entrarComToken(r);
 }
 // A autorização do Google falhou — a pessoa nem chegou a ter token. Os
 // motivos são poucos e cada um tem uma saída diferente, então vale nomear em
@@ -934,6 +1082,10 @@ function mostrarFalhaDeAutorizacao(r){
     : cod==="popup_failed_to_open"
       ? `O navegador bloqueou a janela do Google. Libere pop-ups para este
          site e tente de novo.`
+    : cod==="gis_indisponivel"
+      ? `Não deu para carregar o login do Google. Confira a conexão e, se houver
+         bloqueador de anúncios ou de rastreadores, libere
+         <code>accounts.google.com</code> para este site.`
     : `O Google recusou a autorização (<code>${esc(cod)}</code>).`;
   const caixa=document.getElementById("login-erro");
   caixa.innerHTML=`<strong>Não deu para entrar.</strong> ${explicacao}`;
@@ -952,21 +1104,26 @@ function mostrarFalhaDeCarga(erro,email){
        Mostre este e-mail para quem cuida do painel — o cadastro é uma linha.`
     : `<strong>Não deu para carregar os dados.</strong> ${esc(erro&&erro.message||erro)}`;
   caixa.classList.add("visivel");
-  document.getElementById("app").style.display="none";
-  document.getElementById("login-screen").style.display="flex";
+  // A sessão guardada some junto. Sem isso, recarregar a página tentaria
+  // entrar sozinho e cairia nesta mesma tela — sem botão para trocar de conta.
+  esquecerSessao();
   accessToken=null;
+  mostrarTelaDeEntrada();
 }
 
-function logout(){
-  google.accounts.oauth2.revoke(accessToken);
-  accessToken=null;allData=[];movimentos=[];
+async function logout(){
+  // Quem entrou por sessão guardada nunca baixou o script do Google, então
+  // `google` pode simplesmente não existir aqui. Revogar é o certo a fazer,
+  // mas não pode ser o que impede a saída.
+  try{await carregarGIS();google.accounts.oauth2.revoke(accessToken);}catch{}
+  esquecerSessao();
+  accessToken=null;tokenExpiraEm=0;emailConectado="";allData=[];movimentos=[];
   // A fila de pendências fica: se alguém sair antes de a rede voltar, a
   // correção ainda sobe no próximo login em vez de se perder.
   overridesRemotos={};linhasRemotas=0;
   dadosPorPerfil.Lucas=[];dadosPorPerfil.Julia=[];
   movimentosPorPerfil.Lucas=[];movimentosPorPerfil.Julia=[];
-  document.getElementById("app").style.display="none";
-  document.getElementById("login-screen").style.display="flex";
+  mostrarTelaDeEntrada();
 }
 
 // ── DADOS ─────────────────────────────────────────────────
@@ -1254,12 +1411,19 @@ function fecharMenuPerfil(){
   document.getElementById("perfil-chip").classList.remove("aberto");
 }
 
-// Abre no mês mais recente com GASTO real. Um estorno futuro esperado não
-// transforma setembro no mês corrente antes de ele acontecer.
+// Abre no mês corrente do calendário, sempre.
+//
+// Antes abria no mês mais recente com GASTO real, para um estorno lançado em
+// competência futura não fazer setembro parecer o mês corrente. O calendário
+// resolve essa preocupação sozinho — setembro só é setembro em setembro — e
+// corrige o outro lado, que era o que doía: no dia 1º, antes de o primeiro
+// lançamento do mês entrar, o painel abria no mês passado.
+//
+// O mês corrente sem dado nenhum não fica vazio: `mesEhProjetado` liga a
+// projeção a partir do último mês real, então a tela mostra compromissos fixos
+// e parcelas que correm nele.
 function posicionarMesInicial(){
-  const ult=ultimoMesReal();
-  if(!ult)return;
-  mesAtual={m:(ult-1)%12+1,y:Math.floor((ult-1)/12)};
+  mesAtual=mesDeHoje();
 }
 
 // ── MESES FUTUROS ─────────────────────────────────────────
@@ -3055,6 +3219,9 @@ function atualizarPreviewRachar(){
 document.addEventListener("DOMContentLoaded",()=>{
   document.getElementById("rachar-valor")?.addEventListener("input",atualizarPreviewRachar);
   document.getElementById("rachar-split")?.addEventListener("change",atualizarPreviewRachar);
+  // O rótulo do mês nasce aqui, antes de qualquer dado chegar: o cabeçalho
+  // mostrava "04/2026" durante toda a carga porque o valor estava na marcação.
+  document.getElementById("month-label").textContent=mesStr(mesAtual.m,mesAtual.y);
   if(window.__HARNESS_DATA__){
     document.getElementById("login-screen").style.display="none";
     document.getElementById("app").style.display="block";
@@ -3064,6 +3231,8 @@ document.addEventListener("DOMContentLoaded",()=>{
       console.error(err);
       document.getElementById("mes-loading").innerHTML=`erro ao carregar prévia: ${esc(err.message)}`;
     });
+  }else{
+    retomarSessao();
   }
 });
 
