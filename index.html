@@ -24,9 +24,8 @@ button{cursor:pointer;}
 .login-logo{font-family:var(--mono);font-size:11px;letter-spacing:0.2em;color:var(--muted);text-transform:uppercase;}
 .login-title{font-size:28px;font-weight:300;letter-spacing:-0.02em;text-align:center;}
 .login-title span{color:var(--accent);font-weight:500;}
-.google-btn{display:flex;align-items:center;gap:12px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:14px 28px;border-radius:var(--r2);font-family:var(--sans);font-size:15px;transition:all 0.2s;}
-.google-btn:hover{background:var(--bg2);border-color:var(--accent);color:var(--accent);}
-.google-btn svg{width:20px;height:20px;}
+#google-signin{min-height:44px;display:flex;align-items:center;justify-content:center;}
+.login-privacidade{max-width:330px;text-align:center;font-size:11px;line-height:1.55;color:var(--muted2);}
 #login-entrando{display:none;font-family:var(--mono);font-size:12px;letter-spacing:0.08em;color:var(--muted);}
 
 /* ── APP SHELL ── */
@@ -38,6 +37,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:18p
 .month-nav{display:flex;align-items:center;gap:6px;}
 .month-nav button{background:var(--bg3);border:1px solid var(--border);color:var(--muted);width:28px;height:28px;border-radius:7px;font-size:13px;transition:all 0.15s;}
 .month-nav button:hover{border-color:var(--accent);color:var(--accent);}
+.month-nav .month-today{width:auto;padding:0 8px;font-family:var(--mono);font-size:10px;}
 #month-label{font-family:var(--mono);font-size:13px;min-width:72px;text-align:center;color:var(--text);}
 
 /* Toggle líquido/bruto */
@@ -82,6 +82,14 @@ body[data-perfil="Julia"]{--perfil-cor:var(--accent2);}
 .perfil-conta{font-family:var(--mono);font-size:10px;color:var(--muted2);padding:2px 10px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .perfil-sair{color:var(--muted);font-family:var(--mono);font-size:12px;}
 .perfil-sair:hover{color:var(--red);}
+.sync-state{display:flex;align-items:center;gap:6px;background:none;border:1px solid transparent;
+  color:var(--muted2);padding:5px 7px;border-radius:7px;font-family:var(--mono);font-size:10px;}
+.sync-state::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--green);}
+.sync-state.enviando::before{background:var(--amber);animation:pulse 1s infinite;}
+.sync-state.erro{color:var(--red);border-color:rgba(240,74,107,.25);}
+.sync-state.erro::before{background:var(--red);}
+.sync-state.pendente::before{background:var(--amber);}
+@keyframes pulse{50%{opacity:.35;}}
 /* Faixa e controles que só fazem sentido no lado do Lucas. */
 .perfil-aviso{display:none;align-items:flex-start;gap:9px;background:rgba(74,240,200,0.07);border:1px solid rgba(74,240,200,0.22);color:var(--accent2);border-radius:var(--r);padding:10px 15px;margin:24px 32px -8px;font-size:12.5px;line-height:1.45;max-width:1260px;}
 body[data-perfil="Julia"] .perfil-aviso{display:flex;}
@@ -333,6 +341,10 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
 /* ── RACHAR JULIA BTN ── */
 .rachar-btn{background:rgba(74,240,200,0.08);border:1px solid rgba(74,240,200,0.25);color:var(--accent2);padding:5px 12px;border-radius:7px;font-family:var(--mono);font-size:11px;transition:all 0.15s;}
 .rachar-btn:hover{background:rgba(74,240,200,0.15);}
+.rachar-status{display:none;margin:-4px 0 14px;color:var(--green);font-family:var(--mono);
+  font-size:11px;line-height:1.5;}
+.rachar-status.visivel{display:block;}
+.bot-link{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;}
 
 /* ── AÇÕES HEADER ── */
 .header-actions{display:flex;gap:8px;}
@@ -444,6 +456,22 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
   .parc-toolbar .search-box{flex:1 1 100%;min-width:0;}
   .filter-btn{padding:8px 12px;}
 
+  /* Uma transação vira um cartão legível, em vez de uma tabela de oito
+     colunas que obriga a adivinhar que existe rolagem horizontal. */
+  .trans-table,.trans-table tbody,.trans-table tr,.trans-table td{display:block;width:100%;}
+  .trans-table thead{display:none;}
+  .trans-table tr{background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+    padding:9px 12px;margin-bottom:10px;white-space:normal;}
+  .trans-table td{display:grid;grid-template-columns:82px minmax(0,1fr);gap:10px;
+    align-items:center;padding:7px 0;border-bottom:1px solid var(--border);text-align:left;}
+  .trans-table td:last-child{border-bottom:none;}
+  .trans-table td::before{content:attr(data-label);font-family:var(--mono);font-size:9px;
+    color:var(--muted2);text-transform:uppercase;letter-spacing:.06em;}
+  .trans-table .trans-desc{min-width:0;max-width:none;}
+  .trans-table .valor-credito,.trans-table .valor-debito{text-align:left;}
+  .trans-table .inline-select{max-width:100%;width:100%;}
+  .sync-state{order:4;}
+
   .section-hdr{flex-wrap:wrap;gap:8px;}
   .modal-row{flex-direction:column;gap:10px;}
   .modal-btns{flex-direction:column-reverse;}
@@ -457,12 +485,10 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
 <div id="login-screen">
   <div class="login-logo">agente financeiro</div>
   <div class="login-title">Finanças do <span>Lucas</span></div>
-  <button class="google-btn" id="btn-entrar" onclick="iniciarLogin()">
-    <svg viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-    Entrar com Google
-  </button>
+  <div id="google-signin" aria-label="Entrar com Google"></div>
   <div id="login-entrando">entrando&hellip;</div>
   <div id="login-erro"></div>
+  <div class="login-privacidade">O login confirma sua identidade. O painel não pede acesso ao Drive, Gmail ou planilhas.</div>
 </div>
 
 <!-- APP -->
@@ -471,9 +497,10 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
     <div class="logo">agente <span>financeiro</span></div>
     <div class="header-controls">
       <div class="month-nav">
-        <button onclick="navMes(-1)">&#8592;</button>
+        <button onclick="navMes(-1)" aria-label="mês anterior">&#8592;</button>
         <span id="month-label"></span>
-        <button onclick="navMes(1)">&#8594;</button>
+        <button onclick="navMes(1)" aria-label="próximo mês">&#8594;</button>
+        <button class="month-today" id="month-today" onclick="irParaHoje()">hoje</button>
       </div>
       <div class="cartao-filter">
         <select id="cartao-sel" onchange="renderAll()">
@@ -489,6 +516,8 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
         <label class="toggle"><input type="checkbox" id="toggle-liq" checked onchange="renderAll()"><span class="toggle-slider"></span></label>
         <span id="toggle-label">líquido</span>
       </div>
+      <button class="sync-state" id="sync-state" onclick="sincronizarOverrides()"
+              aria-live="polite" title="estado das correções feitas na tabela">salvo</button>
       <div class="perfil-chip" id="perfil-chip">
         <button class="perfil-btn" onclick="alternarMenuPerfil(event)" aria-haspopup="menu">
           <span class="avatar" id="perfil-avatar">L</span>
@@ -509,11 +538,11 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
     </div>
   </header>
 
-  <div class="tabs">
-    <div class="tab active" onclick="setTab('mes',this)">mês atual</div>
-    <div class="tab" onclick="setTab('transacoes',this)">transações</div>
-    <div class="tab" onclick="setTab('historico',this)">histórico</div>
-    <div class="tab" onclick="setTab('investimentos',this)">investimentos</div>
+  <div class="tabs" role="tablist" aria-label="seções do painel">
+    <button type="button" class="tab active" role="tab" aria-selected="true" onclick="setTab('mes',this)">resumo</button>
+    <button type="button" class="tab" role="tab" aria-selected="false" onclick="setTab('transacoes',this)">transações</button>
+    <button type="button" class="tab" role="tab" aria-selected="false" onclick="setTab('historico',this)">histórico</button>
+    <button type="button" class="tab" role="tab" aria-selected="false" onclick="setTab('investimentos',this)">investimentos</button>
   </div>
 
   <div class="perfil-aviso" id="perfil-aviso"></div>
@@ -594,12 +623,12 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
               <option value="fatura">por fatura</option>
             </select>
             <button class="filter-btn active" data-direcao="" onclick="filtrarDirecao('',this)">todos</button>
-            <button class="filter-btn" data-direcao="Débito" onclick="filtrarDirecao('Débito',this)">débitos</button>
-            <button class="filter-btn" data-direcao="Crédito" onclick="filtrarDirecao('Crédito',this)">créditos</button>
+            <button class="filter-btn" data-direcao="Débito" onclick="filtrarDirecao('Débito',this)">saídas</button>
+            <button class="filter-btn" data-direcao="Crédito" onclick="filtrarDirecao('Crédito',this)">entradas</button>
             <button class="filter-btn export-btn" id="btn-exportar-edicoes" onclick="exportarEdicoes()" title="baixa as correções feitas na tela para virarem regra no pipeline">exportar edições</button>
           </div>
           <table class="parc-table trans-table">
-            <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Fixo?</th><th>Conta</th><th style="text-align:right">Crédito</th><th style="text-align:right">Débito</th><th></th></tr></thead>
+            <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Fixo?</th><th>Conta</th><th style="text-align:right" title="dinheiro que entrou">Entrou</th><th style="text-align:right" title="dinheiro que saiu">Saiu</th><th></th></tr></thead>
             <tbody id="trans-body"></tbody>
           </table>
         </div>
@@ -672,35 +701,6 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
   </main>
 </div>
 
-<!-- MODAL: + fatura inteira -->
-<div class="modal-overlay" id="modal-fatura">
-  <div class="modal">
-    <div class="modal-title">registrar fatura</div>
-    <div class="modal-label">cartão</div>
-    <div class="modal-row">
-      <select class="modal-select" id="fatura-cartao" style="flex:1">
-        <option>Santander</option><option>Itaú</option><option>WillBank</option><option>Nubank</option>
-      </select>
-    </div>
-    <div class="modal-label">mês de referência</div>
-    <div class="modal-row">
-      <input class="modal-input" id="fatura-mes" placeholder="04/2026" style="flex:1">
-    </div>
-    <div class="modal-label">valor total da fatura (R$)</div>
-    <div class="modal-row">
-      <input class="modal-input" id="fatura-valor" placeholder="0,00" type="text" style="flex:1">
-    </div>
-    <div class="modal-label">observação (opcional)</div>
-    <div class="modal-row">
-      <input class="modal-input" id="fatura-obs" placeholder="detalhes..." style="flex:1">
-    </div>
-    <div class="modal-btns">
-      <button class="btn-ghost" onclick="fecharModal('modal-fatura')">cancelar</button>
-      <button class="btn-primary" onclick="registrarFatura()">registrar</button>
-    </div>
-  </div>
-</div>
-
 <!-- MODAL: editar transação -->
 <div class="modal-overlay" id="modal-editar">
   <div class="modal">
@@ -761,24 +761,18 @@ function removerOverride(){
       Preencha os campos acima para ver o preview
     </div>
     <div class="modal-btns">
-      <button class="btn-ghost" onclick="fecharModal('modal-rachar')">cancelar</button>
-      <button class="btn-primary" onclick="confirmarRachar()">criar lançamentos</button>
+      <a class="btn-ghost bot-link" href="https://t.me/lucas_fo_bot" target="_blank" rel="noopener">abrir bot</a>
+      <button class="btn-primary" onclick="confirmarRachar()">copiar resumo</button>
     </div>
+    <div class="rachar-status" id="rachar-status" role="status"></div>
   </div>
 </div>
 
 <script>
 const CLIENT_ID="957120309607-ai5mt8u2uets67obn6tpcq75carog7c7.apps.googleusercontent.com";
-// O painel não lê mais a planilha, então não pede mais acesso a ela — e sai
-// junto o escopo mais largo que ele tinha: `spreadsheets` dá acesso a TODAS as
-// planilhas da conta, para ler uma.
-//
-// `userinfo.email` é novo e não é detalhe: sem ele o `userinfo` do Google não
-// devolve o e-mail, e é o e-mail que a Edge Function procura em `pessoas.email`
-// para decidir quem entra. O código antigo já lia `u.email` sem pedir o escopo.
-//
-// Mudar escopo faz o Google pedir consentimento de novo na próxima entrada.
-const SCOPES="openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile";
+// Sign in with Google devolve um ID token destinado especificamente a este
+// CLIENT_ID. A Edge valida assinatura, emissor, expiracao e audiencia. Nao ha
+// OAuth access token nem permissao para Drive, Gmail ou planilhas.
 // Este arquivo é servido publicamente. Nada de valor real, nome de terceiro ou
 // meta pessoal mora aqui — tudo isso vem da aba Config, que está atrás do
 // login. Foi por essa razão que o piso de renda saiu daqui, e vale igual para
@@ -860,8 +854,8 @@ const catsAbertas=new Set();
 let catsVisiveis=[];
 // Rateio das despesas marcadas "casal", vindo de Config!C9.
 let SPLIT_LUCAS=0;
-let tokenClient,accessToken,allData=[],orcamentos={};
-// Quando o token guardado deixa de valer, em epoch ms.
+let idToken,allData=[],orcamentos={};
+// Quando a credencial em memoria deixa de valer, em epoch ms.
 let tokenExpiraEm=0;
 let movimentos=[];
 // A Config lida da planilha, por pessoa. Guardada à parte para trocar de perfil
@@ -916,41 +910,12 @@ function rendaDoMes(ms){
 }
 const cartaoFil=()=>document.getElementById("cartao-sel").value;
 
-// ── LOGIN, E A SESSÃO QUE SOBREVIVE AO RECARREGAR ─────────
-// `initTokenClient` é o fluxo implícito do Google: devolve `access_token` de
-// ~1 h e **nenhum** refresh token. Manter alguém conectado entre visitas é,
-// por isso, duas coisas e não uma:
-//
-//   1. guardar o token enquanto ele vale, para recarregar a página não custar
-//      nem uma ida ao Google;
-//   2. quando vencer, pedir outro com `prompt:""` — sem tela de consentimento.
-//      O Google concede se a sessão da pessoa no navegador ainda estiver de pé
-//      e o consentimento já tiver sido dado antes. Quando recusa, a tela de
-//      entrada volta como sempre foi.
-//
-// O token fica no `localStorage`, legível por qualquer script desta origem. O
-// escopo dele é `openid` + `userinfo.email` + `userinfo.profile` e mais nada:
-// quem o roubasse descobriria o e-mail de quem entrou — não entraria no
-// painel, porque a Edge Function confere a conta contra `pessoas.email` a cada
-// chamada, e não alcançaria mais nada da conta Google. O escopo de planilha,
-// que dava acesso a *todas* as planilhas da conta, saiu em 21/08/2026; guardar
-// aquele token teria sido outra conversa.
-const SESSAO="painelSessao";
-// Folga para o token não vencer no meio de uma carga que já começou.
-const SESSAO_MARGEM_MS=120000;
-
-function sessaoGuardada(){
-  try{return JSON.parse(localStorage.getItem(SESSAO)||"null");}catch{return null;}
-}
-const tokenAindaVale=s=>!!(s&&s.token&&s.expira>Date.now()+SESSAO_MARGEM_MS);
-function guardarSessao(conta){
-  try{localStorage.setItem(SESSAO,JSON.stringify(
-    {token:accessToken,expira:tokenExpiraEm,email:emailConectado,conta}));}catch{}
-}
-function esquecerSessao(){try{localStorage.removeItem(SESSAO);}catch{}}
-
-// O script do Google entra uma vez só, sob demanda. Quem volta com token ainda
-// válido nem chega a baixá-lo — o painel abre sem tocar em accounts.google.com.
+// ── LOGIN SEM CREDENCIAL PERSISTIDA ──────────────────────
+// O ID token vive somente nesta pagina. `localStorage` e compartilhado entre
+// todos os projetos em lucas-d-s-1.github.io; guardar ali um bearer financeiro
+// faria qualquer script da mesma origem poder le-lo. Ao recarregar, o Google
+// pode fazer auto-select para uma conta ja consentida ou mostra o botao.
+const SESSAO_LEGADA="painelSessao";
 let gisCarregando;
 function carregarGIS(){
   if(!gisCarregando)gisCarregando=new Promise((ok,falha)=>{
@@ -965,46 +930,33 @@ function carregarGIS(){
   return gisCarregando;
 }
 
-// Um cliente só, usado pelo botão e pela renovação silenciosa. O callback do
-// GIS não diz qual das duas pediu o token, então quem pede deixa aqui a função
-// que quer de volta.
-let entregarToken=null;
-function responder(r){const f=entregarToken;entregarToken=null;if(f)f(r);}
-async function prepararTokenClient(){
+let gisConfigurado=false;
+async function prepararLoginGoogle(){
   await carregarGIS();
-  if(!tokenClient)tokenClient=google.accounts.oauth2.initTokenClient({
-    client_id:CLIENT_ID,scope:SCOPES,
-    callback:responder,
-    // Erros que não são do OAuth — pop-up bloqueado, janela fechada antes de
-    // concluir — chegam por aqui e não pelo callback. Sem isto a promessa
-    // ficaria pendurada e a tela pararia no "entrando…".
-    error_callback:e=>responder({error:(e&&e.type)||"popup_failed_to_open"}),
+  if(gisConfigurado)return;
+  google.accounts.id.initialize({
+    client_id:CLIENT_ID,
+    callback:receberCredencialGoogle,
+    auto_select:true,
+    use_fedcm_for_button:true,
+    button_auto_select:true,
   });
-  return tokenClient;
-}
-async function pedirToken(opcoes){
-  const cli=await prepararTokenClient();
-  return new Promise(ok=>{entregarToken=ok;cli.requestAccessToken(opcoes);});
-}
-// `prompt:""` não abre janela nenhuma. Quando o Google recusa ele costuma
-// responder pelo callback, mas há casos — cookie de terceiro bloqueado — em
-// que nada volta; sem o prazo a tela ficaria em "entrando…" para sempre.
-function pedirTokenEmSilencio(){
-  return Promise.race([
-    pedirToken({prompt:""}),
-    new Promise(ok=>setTimeout(()=>ok({error:"sem_resposta"}),8000)),
-  ]);
+  google.accounts.id.renderButton(document.getElementById("google-signin"),{
+    type:"standard",theme:"filled_black",size:"large",text:"signin_with",
+    shape:"pill",logo_alignment:"left",width:250,
+  });
+  gisConfigurado=true;
 }
 
 function mostrarEntrando(){
-  document.getElementById("btn-entrar").style.display="none";
+  document.getElementById("google-signin").style.display="none";
   document.getElementById("login-entrando").style.display="block";
 }
 function mostrarTelaDeEntrada(){
   document.getElementById("app").style.display="none";
   document.getElementById("login-screen").style.display="flex";
   document.getElementById("login-entrando").style.display="none";
-  document.getElementById("btn-entrar").style.display="";
+  document.getElementById("google-signin").style.display="flex";
 }
 function mostrarApp(rotulo){
   // Quem entrou não é o mesmo que o painel está mostrando: a conta do Google
@@ -1015,76 +967,45 @@ function mostrarApp(rotulo){
   document.getElementById("toggle-label").textContent="líquido";
 }
 
-// Clique no "Entrar com Google": é o único caminho que pode mostrar consentimento.
-async function iniciarLogin(){
-  mostrarEntrando();
-  let r;
-  // Sem isto, uma falha ao baixar o script do Google deixaria a tela parada em
-  // "entrando…", sem botão e sem explicação.
-  try{ r=await pedirToken({}); }
-  catch(e){ mostrarTelaDeEntrada(); mostrarFalhaDeAutorizacao({error:"gis_indisponivel"}); return; }
-  // Falha de autorização precisa aparecer. Voltar em silêncio aqui fazia o
-  // botão parecer quebrado: a pessoa clicava, a tela não mudava, e não havia
-  // nada escrito para ela repetir a quem pudesse ajudar.
-  if(r.error){mostrarTelaDeEntrada();mostrarFalhaDeAutorizacao(r);return;}
-  await entrarComToken(r);
+function lerPayloadJwt(token){
+  try{
+    const p=token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
+    const bin=atob(p+"=".repeat((4-p.length%4)%4));
+    return JSON.parse(new TextDecoder().decode(Uint8Array.from(bin,c=>c.charCodeAt(0))));
+  }catch{return{};}
 }
 
-// Daqui para a frente tanto faz de onde veio o token — botão, renovação
-// silenciosa ou sessão guardada.
-async function entrarComToken(r){
-  accessToken=r.access_token;
-  // `expires_in` vem em segundos, e na prática é 3599.
-  tokenExpiraEm=Date.now()+(Number(r.expires_in)||3600)*1000;
-  const u=await fetch("https://www.googleapis.com/oauth2/v3/userinfo",{headers:{Authorization:"Bearer "+accessToken}}).then(r=>r.json());
+async function receberCredencialGoogle(r){
+  if(!r||!r.credential){mostrarTelaDeEntrada();mostrarFalhaDeAutorizacao({error:"sem_credencial"});return;}
+  mostrarEntrando();
+  idToken=r.credential;
+  const u=lerPayloadJwt(idToken);
+  tokenExpiraEm=Number(u.exp||0)*1000;
   emailConectado=String(u.email||"").trim().toLowerCase();
   const conta=u.email||u.given_name||u.name||"—";
-  guardarSessao(conta);
   mostrarApp(conta);
   await carregarComSessao(conta);
 }
 
-// Uma renovação silenciosa por queda de token, não mais: se ela também falhar,
-// insistir só faria a tela piscar.
-let renovando=false;
 async function carregarComSessao(conta){
   try{
     await carregarTudo();
   }catch(erro){
-    // 401 é token vencido ou revogado — a Edge Function distingue isso de
-    // "conta não autorizada", que é 403. O primeiro caso a pessoa não precisa
-    // nem ver; o segundo ela precisa ler.
-    if(erro&&erro.status===401&&!renovando){
-      renovando=true;
-      const r=await pedirTokenEmSilencio();
-      renovando=false;
-      if(!r.error){await entrarComToken(r);return;}
-    }
     mostrarFalhaDeCarga(erro,conta);
   }
 }
 
-// Chamada no carregamento da página. Quem nunca entrou neste navegador não vê
-// diferença nenhuma: sai daqui na primeira linha e a tela de entrada aparece.
-async function retomarSessao(){
-  try{ await tentarRetomarSessao(); }
-  catch(erro){ esquecerSessao(); mostrarTelaDeEntrada(); }
-}
-async function tentarRetomarSessao(){
-  const s=sessaoGuardada();
-  if(!s)return;
-  mostrarEntrando();
-  if(tokenAindaVale(s)){
-    accessToken=s.token;
-    tokenExpiraEm=s.expira;
-    emailConectado=s.email||"";
-    mostrarApp(s.conta||s.email||"—");
-    await carregarComSessao(s.conta||s.email||"");
-    return;
+async function iniciarAutenticacao(){
+  // Remove access tokens gravados por versoes anteriores assim que o HTML
+  // seguro carregar. Perfil e mes continuam lembrados: nao sao credenciais.
+  try{localStorage.removeItem(SESSAO_LEGADA);}catch{}
+  mostrarTelaDeEntrada();
+  try{
+    await prepararLoginGoogle();
+    google.accounts.id.prompt();
+  }catch(erro){
+    mostrarFalhaDeAutorizacao({error:"gis_indisponivel"});
   }
-  const r=await pedirTokenEmSilencio();
-  if(r.error){esquecerSessao();mostrarTelaDeEntrada();return;}
-  await entrarComToken(r);
 }
 // A autorização do Google falhou — a pessoa nem chegou a ter token. Os
 // motivos são poucos e cada um tem uma saída diferente, então vale nomear em
@@ -1124,20 +1045,15 @@ function mostrarFalhaDeCarga(erro,email){
        Mostre este e-mail para quem cuida do painel — o cadastro é uma linha.`
     : `<strong>Não deu para carregar os dados.</strong> ${esc(erro&&erro.message||erro)}`;
   caixa.classList.add("visivel");
-  // A sessão guardada some junto. Sem isso, recarregar a página tentaria
-  // entrar sozinho e cairia nesta mesma tela — sem botão para trocar de conta.
-  esquecerSessao();
-  accessToken=null;
+  idToken=null;
   mostrarTelaDeEntrada();
 }
 
 async function logout(){
-  // Quem entrou por sessão guardada nunca baixou o script do Google, então
-  // `google` pode simplesmente não existir aqui. Revogar é o certo a fazer,
-  // mas não pode ser o que impede a saída.
-  try{await carregarGIS();google.accounts.oauth2.revoke(accessToken);}catch{}
-  esquecerSessao();
-  accessToken=null;tokenExpiraEm=0;emailConectado="";allData=[];movimentos=[];
+  // O ID token nao e refresh token e nao fica guardado. `disableAutoSelect`
+  // impede sair e entrar automaticamente na mesma conta em seguida.
+  try{await carregarGIS();google.accounts.id.disableAutoSelect();}catch{}
+  idToken=null;tokenExpiraEm=0;emailConectado="";allData=[];movimentos=[];
   // A fila de pendências fica: se alguém sair antes de a rede voltar, a
   // correção ainda sobe no próximo login em vez de se perder.
   overridesRemotos={};linhasRemotas=0;
@@ -1261,7 +1177,7 @@ async function buscarPainel(){
   // harness imitava a API do Sheets faixa por faixa; agora imita uma resposta
   // só, que é bem menos superfície para divergir.
   if(window.__HARNESS_DATA__)return window.__HARNESS_DATA__;
-  const r=await fetch(PAINEL_API,{headers:{Authorization:"Bearer "+accessToken}});
+  const r=await fetch(PAINEL_API,{headers:{Authorization:"Bearer "+idToken}});
   const corpo=await r.json().catch(()=>({}));
   if(!r.ok){
     // A função explica a recusa — conta fora de `pessoas.email`, token
@@ -1769,31 +1685,8 @@ function renderAll(){
   // posicionarMesInicial() move o mês sem passar por lá, o cabeçalho mentia até
   // o primeiro clique nas setas: mostrava 04/2026 exibindo dados de agosto.
   document.getElementById("month-label").textContent=mesStr(mesAtual.m,mesAtual.y);
+  atualizarNavegacaoMes();
   renderizarMes();renderTransacoes();renderizarHistorico();renderInvestimentos();
-}
-
-// ── LANÇAMENTOS ───────────────────────────────────────────
-// Lista crua do mês. Existe para conferir classificação linha a linha: as
-// outras abas só mostram agregado, então um lançamento com categoria errada
-// fica invisível nelas.
-function renderLancamentos(){
-  const busca=(document.getElementById("lanc-search").value||"").toLowerCase();
-  const txs=dadosMes(mesAtual.m,mesAtual.y,cartaoFil())
-    .filter(r=>!busca||[r.desc,r.cat,r.tipo,r.cartao].some(c=>(c||"").toLowerCase().includes(busca)))
-    .sort((a,b)=>b.valor-a.valor);
-  const total=txs.filter(r=>r.tipo!=="Reembolso").reduce((s,r)=>s+r.valor,0);
-  document.getElementById("lanc-resumo").textContent=
-    `${txs.length} lançamentos · ${fmt(total)}`;
-  document.getElementById("lanc-body").innerHTML=txs.length
-    ? txs.map(r=>`<tr>
-        <td style="color:var(--muted);font-family:var(--mono);font-size:11px;white-space:nowrap">${r.data||"—"}</td>
-        <td>${r.desc}</td>
-        <td style="color:var(--muted)">${r.cat}</td>
-        <td style="color:var(--muted);font-family:var(--mono);font-size:11px">${r.tipo}</td>
-        <td style="color:var(--muted);font-family:var(--mono);font-size:11px">${r.cartao||"—"}</td>
-        <td style="text-align:right;font-family:var(--mono);${r.tipo==="Reembolso"?"color:var(--green)":""}">${r.tipo==="Reembolso"?"−":""}${fmt(r.valor)}</td>
-      </tr>`).join("")
-    : `<tr><td colspan="6" style="color:var(--muted);padding:18px 0">nenhum lançamento neste filtro</td></tr>`;
 }
 
 // ── MÊS ATUAL ─────────────────────────────────────────────
@@ -2794,7 +2687,7 @@ async function sincronizarOverrides(){
     atualizarBotaoEdicoes();
     return;
   }
-  if(!accessToken||!Object.keys(getPendentes()).length)return;
+  if(!idToken||!Object.keys(getPendentes()).length)return;
   // Uma sincronização de cada vez. Cliques seguidos na tabela viram uma
   // segunda rodada no fim, não duas escritas concorrentes.
   if(sincronizando){ressincronizar=true;return;}
@@ -2830,7 +2723,7 @@ async function sincronizarOverrides(){
     });
 
     const r=await fetch(PAINEL_API+"/overrides",{method:"POST",
-      headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json"},
+      headers:{Authorization:"Bearer "+idToken,"Content-Type":"application/json"},
       body:JSON.stringify(linhas)});
     const corpo=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(corpo.detalhe||corpo.erro||("HTTP "+r.status));
@@ -2979,7 +2872,7 @@ async function apelidarEstabelecimento(id,apelido){
     return(estabelecimentos[(movimentos.find(r=>r.id===id)||{}).descNorm]||{}).linhas||0;
   }
   const r=await fetch(PAINEL_API+"/apelidos",{method:"POST",
-    headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json"},
+    headers:{Authorization:"Bearer "+idToken,"Content-Type":"application/json"},
     body:JSON.stringify({transaction_id:id,apelido})});
   const corpo=await r.json().catch(()=>({}));
   if(!r.ok)throw new Error(corpo.detalhe||corpo.erro||("HTTP "+r.status));
@@ -3042,23 +2935,36 @@ function alternarFixo(id){
 // junto, para a regra poder ser escrita sem cruzar nada com a base depois.
 function edicoesPendentes(){return Object.keys(getOverrides()).length;}
 
-// O botão diz duas coisas diferentes: quantas correções existem, e se alguma
-// ainda não chegou na planilha. A segunda importa mais — uma edição que ficou
-// só no navegador não existe para a outra pessoa.
+// O botão de exportação conta as correções; o chip no cabeçalho responde a
+// pergunta mais urgente: esta edição já chegou à base ou ainda está só aqui?
 function atualizarBotaoEdicoes(){
   const btn=document.getElementById("btn-exportar-edicoes");
-  if(!btn)return;
+  const chip=document.getElementById("sync-state");
   const n=edicoesPendentes(),naFila=Object.keys(getPendentes()).length;
-  btn.textContent=n?`exportar ${n} ediç${n===1?"ão":"ões"}`:"exportar edições";
-  btn.classList.toggle("vazio",!n);
   const estado=overridesSync.estado;
-  btn.title=estado==="erro"
+  const detalhe=estado==="erro"
     ?`${naFila} ediç${naFila===1?"ão":"ões"} só neste navegador — a base recusou: ${overridesSync.erro}`
     :estado==="enviando"?"salvando…"
     :estado==="previa"?"prévia local: as edições não saem daqui"
     :naFila?`${naFila} ediç${naFila===1?"ão":"ões"} aguardando envio`
     :"salvas na base";
-  btn.classList.toggle("nao-sincronizado",!!naFila&&estado!=="previa");
+  if(btn){
+    btn.textContent=n?`exportar ${n} ediç${n===1?"ão":"ões"}`:"exportar edições";
+    btn.classList.toggle("vazio",!n);
+    btn.title=detalhe;
+    btn.classList.toggle("nao-sincronizado",!!naFila&&estado!=="previa");
+  }
+  if(chip){
+    chip.className="sync-state";
+    chip.textContent=estado==="enviando"?"salvando"
+      :estado==="erro"?"não salvou"
+      :estado==="previa"?"prévia local"
+      :naFila?`${naFila} pendente${naFila===1?"":"s"}`:"salvo";
+    if(estado==="enviando")chip.classList.add("enviando");
+    else if(estado==="erro")chip.classList.add("erro");
+    else if(naFila)chip.classList.add("pendente");
+    chip.title=detalhe+(estado==="erro"?" — toque para tentar de novo":"");
+  }
 }
 
 function lancamentoPorChave(){
@@ -3164,14 +3070,14 @@ function renderTransacoes(){
     const seletor=`<select class="inline-select" data-acao="categoria" data-id="${esc(r.id)}">${cats.map(c=>`<option value="${esc(c)}"${c===r.cat?" selected":""}>${esc(rotuloCat(c))}</option>`).join("")}</select>`;
     const podeFixar=r.direcao==="Débito"&&r.produto==="conta";
     return`<tr>
-      <td class="trans-data">${esc(r.data||"—")}</td>
-      <td><div class="trans-desc"><strong>${esc(r.desc)}</strong>${r.descOriginal&&r.descOriginal!==r.desc?`<small>original: ${esc(r.descOriginal)}</small>`:""}</div></td>
-      <td>${seletor}</td>
-      <td>${podeFixar?`<button class="fixed-toggle${r.fixo?" on":""}" data-acao="fixo" data-id="${esc(r.id)}">${r.fixo?"fixo":"não fixo"}</button>`:"—"}</td>
-      <td><div>${esc(r.banco)}</div><div class="trans-produto">${esc(r.produto)}</div></td>
-      <td class="valor-credito">${r.credito?"+"+fmtCentavos(r.credito):"—"}</td>
-      <td class="valor-debito">${r.debito?"−"+fmtCentavos(r.debito):"—"}</td>
-      <td><button class="edit-mini" data-acao="editar" data-id="${esc(r.id)}">editar</button></td>
+      <td class="trans-data" data-label="data">${esc(r.data||"—")}</td>
+      <td data-label="descrição"><div class="trans-desc"><strong>${esc(r.desc)}</strong>${r.descOriginal&&r.descOriginal!==r.desc?`<small>original: ${esc(r.descOriginal)}</small>`:""}</div></td>
+      <td data-label="categoria">${seletor}</td>
+      <td data-label="recorrência">${podeFixar?`<button class="fixed-toggle${r.fixo?" on":""}" data-acao="fixo" data-id="${esc(r.id)}">${r.fixo?"fixo":"não fixo"}</button>`:"—"}</td>
+      <td data-label="conta"><div>${esc(r.banco)}</div><div class="trans-produto">${esc(r.produto)}</div></td>
+      <td class="valor-credito" data-label="entrou">${r.credito?"+"+fmtCentavos(r.credito):"—"}</td>
+      <td class="valor-debito" data-label="saiu">${r.debito?"−"+fmtCentavos(r.debito):"—"}</td>
+      <td data-label="ação"><button class="edit-mini" data-acao="editar" data-id="${esc(r.id)}">editar</button></td>
     </tr>`;
   }).join(""):`<tr><td colspan="8" style="color:var(--muted);padding:20px 0">Nenhuma transação neste filtro</td></tr>`;
   const corpo=document.getElementById("trans-body");
@@ -3389,32 +3295,40 @@ function irParaTransacoes(){
 }
 
 function setTab(id,el){
-  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(t=>{
+    t.classList.remove("active");t.setAttribute("aria-selected","false");
+  });
   document.querySelectorAll(".tab-content").forEach(t=>t.classList.remove("active"));
   el.classList.add("active");
+  el.setAttribute("aria-selected","true");
   document.getElementById("tab-"+id).classList.add("active");
+}
+function atualizarNavegacaoMes(){
+  const hoje=new Date(),noAtual=mesAtual.m===hoje.getMonth()+1&&mesAtual.y===hoje.getFullYear();
+  const btn=document.getElementById("month-today");
+  if(btn)btn.style.display=noAtual?"none":"";
+}
+function irParaHoje(){
+  const hoje=new Date();mesAtual={m:hoje.getMonth()+1,y:hoje.getFullYear()};
+  lembrarMes();renderAll();
 }
 function navMes(dir){
   mesAtual.m+=dir;
   if(mesAtual.m>12){mesAtual.m=1;mesAtual.y++;}
   if(mesAtual.m<1){mesAtual.m=12;mesAtual.y--;}
   document.getElementById("month-label").textContent=mesStr(mesAtual.m,mesAtual.y);
+  atualizarNavegacaoMes();
   lembrarMes();
   if(allData.length)renderAll();
 }
 
 // ── MODALS ────────────────────────────────────────────────
-function abrirModalFatura(){document.getElementById("modal-fatura").classList.add("open");}
-function abrirModalRachar(){document.getElementById("modal-rachar").classList.add("open");atualizarPreviewRachar();}
-function fecharModal(id){document.getElementById(id).classList.remove("open");}
-
-function registrarFatura(){
-  const cartao=document.getElementById("fatura-cartao").value;
-  const mes=document.getElementById("fatura-mes").value;
-  const valor=document.getElementById("fatura-valor").value;
-  alert(`📋 Para registrar: adicione as linhas detalhadas da fatura de ${cartao} (${mes} — R$${valor}) na aba Transações do Sheets. O agente no Telegram pode ajudar a categorizar cada item.`);
-  fecharModal("modal-fatura");
+function abrirModalRachar(){
+  document.getElementById("modal-rachar").classList.add("open");
+  document.getElementById("rachar-status").classList.remove("visivel");
+  atualizarPreviewRachar();
 }
+function fecharModal(id){document.getElementById(id).classList.remove("open");}
 
 function atualizarPreviewRachar(){
   const val=parseFloat((document.getElementById("rachar-valor").value||"0").replace(",","."));
@@ -3445,18 +3359,47 @@ document.addEventListener("DOMContentLoaded",()=>{
       document.getElementById("mes-loading").innerHTML=`erro ao carregar prévia: ${esc(err.message)}`;
     });
   }else{
-    retomarSessao();
+    iniciarAutenticacao();
   }
 });
 
-function confirmarRachar(){
-  const desc=document.getElementById("rachar-desc").value;
+async function confirmarRachar(){
+  const desc=document.getElementById("rachar-desc").value.trim();
   const val=parseFloat((document.getElementById("rachar-valor").value||"0").replace(",","."));
   const cat=document.getElementById("rachar-cat").value;
   const split=parseFloat(document.getElementById("rachar-split").value);
-  const juliaVal=(val*(1-split/100)).toFixed(2);
-  alert(`✅ Adicione no Sheets:\n\n1. ${desc} — ${cat} — R$${val} (Variável)\n2. Reembolso Julia (${desc}) — Reembolso — R$${juliaVal} (Reembolso)\n\nOu mande no Telegram: "rachar ${desc} R$${val} com Julia"`);
-  fecharModal("modal-rachar");
+  if(!desc||!Number.isFinite(val)||val<=0){
+    const status=document.getElementById("rachar-status");
+    status.textContent="Preencha descrição e valor antes de copiar.";
+    status.style.color="var(--red)";status.classList.add("visivel");return;
+  }
+  const lucasVal=val*split/100,juliaVal=val-lucasVal;
+  const resumo=[
+    "Rateio para revisar no agente financeiro",
+    `Gasto: ${desc}`,
+    `Categoria: ${rotuloCat(cat)}`,
+    `Total: ${fmt(val)}`,
+    `Lucas (${String(split).replace(".",",")}%): ${fmt(lucasVal)}`,
+    `Julia (${String((100-split).toFixed(1)).replace(".0","").replace(".",",")}%): ${fmt(juliaVal)}`,
+  ].join("\n");
+  try{
+    if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(resumo);
+    else{
+      const area=document.createElement("textarea");area.value=resumo;area.style.position="fixed";
+      area.style.opacity="0";document.body.appendChild(area);area.select();
+      if(!document.execCommand("copy"))throw new Error("clipboard indisponível");
+      area.remove();
+    }
+    const status=document.getElementById("rachar-status");
+    status.style.color="var(--green)";
+    status.textContent="Resumo copiado. Abra o bot e cole junto com o comprovante para revisar antes de lançar.";
+    status.classList.add("visivel");
+  }catch(erro){
+    const status=document.getElementById("rachar-status");
+    status.style.color="var(--red)";
+    status.textContent="O navegador não deixou copiar. Abra o bot e use os valores do resumo acima.";
+    status.classList.add("visivel");
+  }
 }
 
 // Fechar modal e menu de perfil ao clicar fora
