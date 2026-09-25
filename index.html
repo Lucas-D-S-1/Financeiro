@@ -1793,6 +1793,7 @@ function nomeNoDetalhe(r,cat){
   return cat===CAT_ACERTO
     ? nome.replace(/^A (receber|pagar) · /i,"")
       .replace(/\s+\(\d+%(?: de R\$ [\d.,]+)?\)$/i,"")
+      .replace(/^MLP\*MAGALU FAS$/i,"Magalu · fogão")
     : nome;
 }
 
