@@ -302,6 +302,8 @@ main{padding:28px 32px;max-width:1260px;margin:0 auto;}
 .casal-total-linha{display:flex;align-items:baseline;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;}
 .casal-total-linha strong{font-size:24px;color:var(--text);letter-spacing:0;}
 .casal-total-sub{margin-top:6px;font-family:var(--mono);font-size:11px;color:var(--muted);}
+.casal-prev-linha{display:flex;justify-content:space-between;gap:12px;padding:4px 0;font-family:var(--mono);font-size:11px;color:var(--muted);}
+.casal-prev-linha strong{color:var(--amber);white-space:nowrap;font-weight:500;}
 .casal-acerto{margin-top:24px;background:linear-gradient(135deg,rgba(74,240,200,0.08),rgba(200,240,74,0.04));border:1px solid rgba(74,240,200,0.24);border-radius:var(--r2);padding:20px 24px;}
 .casal-acerto-grid{display:grid;grid-template-columns:1fr 1fr 1.25fr;gap:18px;margin-top:14px;}
 .casal-acerto-item{padding-right:18px;border-right:1px solid var(--border);}
@@ -339,7 +341,10 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
 .cat-det-desc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);}
 .cat-det-tipo{font-family:var(--mono);font-size:10px;color:var(--muted);text-align:right;}
 .cat-det-val{font-family:var(--mono);text-align:right;min-width:76px;}
-.cat-det-rodape{display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border2);font-family:var(--mono);font-size:11px;color:var(--muted);}
+.cat-det-rodape{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border2);font-family:var(--mono);font-size:11px;color:var(--muted);}
+.cat-det-previsao{margin:10px 0 4px;padding-top:8px;border-top:1px dashed var(--border2);font-family:var(--mono);font-size:10px;color:var(--blue);}
+.cat-det-linha.prevista .cat-det-desc{color:var(--muted);}
+.cat-det-linha.prevista .cat-det-val{color:var(--amber);}
 @media(max-width:640px){
   .cat-det-linha{grid-template-columns:40px minmax(0,1fr) auto;column-gap:8px;row-gap:2px;align-items:start;}
   .cat-det-data{grid-column:1;grid-row:1;}
@@ -1622,6 +1627,23 @@ function parcelasAntigasJuliaPendentes(m,y){
   });
 }
 
+// O nome da loja pode vir abreviado pela fatura. Esta transformação é só
+// visual; a identificação da parcela continua usando a descrição original.
+function nomeParcelaAntiga(desc){
+  return "Parcela antiga · "+String(desc||"")
+    .replace(/^MM\*/i,"").replace(/\s*\*\s*/g," · ").replace(/\s+/g," ")
+    .trim().toLocaleLowerCase("pt-BR")
+    .replace(/(^|[\s·])([^\s·])/g,(_,sep,letra)=>sep+letra.toLocaleUpperCase("pt-BR"));
+}
+
+// O detalhe do acerto acrescenta a previsão de dívida com a Julia somente
+// quando o mês já tem lançamentos reais. A categoria continua mostrando o
+// valor registrado; a previsão aparece abaixo, separada e identificada.
+function parcelasPrevistasDoAcerto(cat){
+  return cat===CAT_ACERTO&&!cartaoFil()&&!mesEhProjetado(mesAtual.m,mesAtual.y)
+    ? parcelasAntigasJuliaPendentes(mesAtual.m,mesAtual.y):[];
+}
+
 // Quanto de um compromisso aparece no painel de quem está sendo visto, e
 // quanto dele é de fato dessa pessoa. Os dois só diferem quando o compromisso é
 // do casal: quem adianta o dinheiro mostra o valor cheio e cobra a diferença;
@@ -1774,22 +1796,47 @@ function nomeNoDetalhe(r,cat){
 function detalheCategoria(txs,cat){
   const itens=lancamentosDaCategoria(txs,cat);
   if(!itens.length)return"";
-  const linhas=itens.map(({r,sinal})=>`<div class="cat-det-linha${cat===CAT_ACERTO?" acerto":""}">
-    <span class="cat-det-data">${esc((r.data||"").slice(0,5))}</span>
-    <span class="cat-det-desc" title="${esc(nomeNoDetalhe(r,cat))}">${esc(nomeNoDetalhe(r,cat))}</span>
-    <span class="cat-det-tipo">${esc(cat===CAT_ACERTO?(sinal<0?"a receber de "+outroPerfil():"a pagar a "+outroPerfil()):r.tipo||"")}${cat!==CAT_ACERTO&&r.parcTotal>1?` ${r.parcAtual}/${r.parcTotal}`:""}</span>
-    <span class="cat-det-val"${sinal<0?' style="color:var(--green)"':""}>${cat===CAT_ACERTO?"":sinal<0?"−":""}${cat===CAT_ACERTO?fmtCentavos(r.valor):fmt(r.valor)}</span>
-  </div>`).join("");
+  const previstas=parcelasPrevistasDoAcerto(cat);
+  const totalPrevisto=previstas.reduce((s,r)=>s+r.valor,0);
+  const linhas=itens.map(({r,sinal})=>{
+    const valor=cat===CAT_ACERTO
+      ? `${sinal>0?"−":""}${fmtCentavos(r.valor)}`
+      : `${sinal<0?"−":""}${fmt(r.valor)}`;
+    const cor=cat===CAT_ACERTO
+      ? sinal<0?"var(--green)":"var(--amber)"
+      : sinal<0?"var(--green)":"";
+    return`<div class="cat-det-linha${cat===CAT_ACERTO?" acerto":""}">
+      <span class="cat-det-data">${esc((r.data||"").slice(0,5))}</span>
+      <span class="cat-det-desc" title="${esc(nomeNoDetalhe(r,cat))}">${esc(nomeNoDetalhe(r,cat))}</span>
+      <span class="cat-det-tipo">${esc(cat===CAT_ACERTO?(sinal<0?"a receber de "+outroPerfil():"a pagar a "+outroPerfil()):r.tipo||"")}${cat!==CAT_ACERTO&&r.parcTotal>1?` ${r.parcAtual}/${r.parcTotal}`:""}</span>
+      <span class="cat-det-val"${cor?` style="color:${cor}"`:""}>${valor}</span>
+    </div>`;
+  }).join("");
   const soma=itens.reduce((s,{r,sinal})=>s+r.valor*sinal,0);
+  // Sinal do ponto de vista do perfil: receber soma, pagar subtrai.
+  const saldoUsuario=-soma+(perfil==="Lucas"?-totalPrevisto:totalPrevisto);
+  const prefixo=previstas.length?"saldo parcial previsto ":"saldo ";
   const totalNome=cat===CAT_ACERTO
-    ? soma<-.005?`saldo a receber de ${esc(outroPerfil())}`
-      : soma>.005?`saldo a pagar a ${esc(outroPerfil())}`:"saldo zerado"
+    ? prefixo+(saldoUsuario>.005?`a receber de ${esc(outroPerfil())}`
+      : saldoUsuario<-.005?`a pagar a ${esc(outroPerfil())}`:"zerado")
     : `${itens.length} lançamento${itens.length>1?"s":""}`;
   const aviso=(cat===CAT_ACERTO&&!isLiq())
-    ? `<div class="cat-det-linha" style="color:var(--muted)"><span class="cat-det-desc">o total na linha acima mostra só o que você deve — o toggle está em bruto. O líquido é o número ao lado.</span></div>`
+    ? `<div class="cat-det-previsao">A linha da categoria mostra só o lado a pagar no modo bruto; o saldo abaixo considera os dois lados.</div>`
     : "";
-  return`<tr class="cat-detalhe"><td colspan="4"><div class="cat-det-box">${linhas}${aviso}
-    <div class="cat-det-rodape"><span>${totalNome}</span><span>${cat===CAT_ACERTO?"":soma<0?"−":""}${cat===CAT_ACERTO?fmtCentavos(soma):fmt(soma)}</span></div>
+  const linhasPrevistas=previstas.length
+    ? `<div class="cat-det-previsao">Parcelas antigas no cartão da Julia · previsão a conferir na fatura</div>`
+      +previstas.map(r=>`<div class="cat-det-linha acerto prevista">
+        <span class="cat-det-data">prev.</span>
+        <span class="cat-det-desc" title="${esc(nomeParcelaAntiga(r.desc))}">${esc(nomeParcelaAntiga(r.desc))}</span>
+        <span class="cat-det-tipo">${perfil==="Lucas"?"a pagar a Julia":"a receber de Lucas"} · previsão</span>
+        <span class="cat-det-val" style="color:${perfil==="Lucas"?"var(--amber)":"var(--green)"}">${perfil==="Lucas"?"−":""}${fmtCentavos(r.valor)}</span>
+      </div>`).join("")
+    : "";
+  const totalValor=cat===CAT_ACERTO
+    ? `${saldoUsuario<-.005?"−":""}${fmtCentavos(saldoUsuario)}`
+    : `${soma<0?"−":""}${fmt(soma)}`;
+  return`<tr class="cat-detalhe"><td colspan="4"><div class="cat-det-box">${linhas}${aviso}${linhasPrevistas}
+    <div class="cat-det-rodape"><span>${totalNome}</span><span>${totalValor}</span></div>
   </div></td></tr>`;
 }
 
@@ -1976,12 +2023,17 @@ function renderizarMes(){
       const recebe=val<0;
       // No modo bruto a linha mostra só um dos lados, então a nota não pode
       // prometer líquido: quem fecha a conta ali é o rodapé do detalhe.
-      const nota=!isLiq()
-        ? `lançamentos registrados — abra para ver de qual conta ou compra vêm`
+      const previstas=parcelasPrevistasDoAcerto(cat);
+      const valorPrevisto=previstas.reduce((s,r)=>s+r.valor,0);
+      const notaBase=!isLiq()
+        ? `valor registrado; abra para ver os lançamentos`
         : recebe
-          ? `a receber de ${outroPerfil()} pelos lançamentos registrados; previsões no card do casal`
-          : `a pagar a ${outroPerfil()} pelos lançamentos registrados; previsões no card do casal`;
-      linha=`<tr class="cat-row${recebe?" credito":""}${aberta?" aberta":""}" data-cat="${cat}"><td class="cat-name">${chevron}${rotuloCat(cat)}<span class="cat-fech-nota">${nota}</span></td><td></td><td class="cat-vals">${fmtCentavos(val)}</td><td class="cat-status">${recebe?"💚":"🤝"}</td></tr>`;
+          ? `valor registrado a receber de ${outroPerfil()}`
+          : `valor registrado a pagar a ${outroPerfil()}`;
+      const notaPrevista=previstas.length
+        ? ` · ${fmtCentavos(valorPrevisto)} ${perfil==="Lucas"?"a pagar a Julia":"a receber de Lucas"} em parcelas antigas previstas; abra para ver`
+        : "";
+      linha=`<tr class="cat-row${recebe?" credito":""}${aberta?" aberta":""}" data-cat="${cat}"><td class="cat-name">${chevron}${rotuloCat(cat)}<span class="cat-fech-nota">${notaBase}${notaPrevista}</span></td><td></td><td class="cat-vals">${recebe?"":"−"}${fmtCentavos(val)}</td><td class="cat-status">${recebe?"💚":"🤝"}</td></tr>`;
     }else if(val<0){
       // Crédito: não tem orçamento para comparar nem barra que faça sentido.
       linha=`<tr class="cat-row credito${aberta?" aberta":""}" data-cat="${cat}"><td class="cat-name">${chevron}${rotuloCat(cat)}<span class="cat-fech-nota">volta pro bolso quando ${outroPerfil()} acertar</span></td><td></td><td class="cat-vals">−${fmt(val)}</td><td class="cat-status">💚</td></tr>`;
@@ -3374,8 +3426,8 @@ function cardAcertoCasal(lucasRecebe,juliaRecebe,ms,parcialL,parcialJ,semJuliaNo
         ? "Há faturas incompletas neste mês; o saldo pode mudar."
         : "Só gastos registrados entram no acerto; contas previstas aguardam o extrato.";
   const detalheParcelas=parcelasPrevistas.length
-    ? '<div class="casal-total-sub">Parcelas previstas da Julia: '+
-      parcelasPrevistas.map(r=>esc(r.desc)+" "+fmtCentavos(r.valor)).join(" · ")+"</div>"
+    ? '<div class="casal-total-sub">Parcelas antigas da Julia · valores que Lucas deve, ainda previstos:</div>'+
+      parcelasPrevistas.map(r=>`<div class="casal-prev-linha"><span>${esc(nomeParcelaAntiga(r.desc))}</span><strong>−${fmtCentavos(r.valor)}</strong></div>`).join("")
     : "";
   const direcao=saldo>0.005?"Julia paga Lucas":saldo<-.005?"Lucas paga Julia":"ninguém transfere";
   const cor=saldo>0.005?"var(--accent2)":saldo<-.005?"var(--amber)":"var(--muted)";
