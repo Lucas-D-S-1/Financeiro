@@ -3306,9 +3306,10 @@ function cardAcertoCasal(lucasRecebe,juliaRecebe,ms){
   const cor=saldo>0.005?"var(--accent2)":saldo<-.005?"var(--amber)":"var(--muted)";
   return`<div class="casal-acerto">
     <div class="casal-total-linha"><span>acerto do casal em ${ms}</span><strong style="color:${cor}">${fmtCentavos(saldo)}</strong></div>
+    <div class="casal-total-sub">Só gastos registrados entram no acerto; contas previstas aguardam o extrato.</div>
     <div class="casal-acerto-grid">
-      <div class="casal-acerto-item"><div class="casal-acerto-label">Julia deve ao Lucas</div><div class="casal-acerto-valor" style="color:var(--accent2)">${fmtCentavos(lucasRecebe)}</div><div class="casal-acerto-direcao">itens “A receber” no cartão dele</div></div>
-      <div class="casal-acerto-item"><div class="casal-acerto-label">Lucas deve à Julia</div><div class="casal-acerto-valor" style="color:var(--amber)">${fmtCentavos(juliaRecebe)}</div><div class="casal-acerto-direcao">itens “A receber” no cartão dela</div></div>
+      <div class="casal-acerto-item"><div class="casal-acerto-label">Julia deve ao Lucas</div><div class="casal-acerto-valor" style="color:var(--accent2)">${fmtCentavos(lucasRecebe)}</div><div class="casal-acerto-direcao">itens “A receber” de gastos pagos por ele</div></div>
+      <div class="casal-acerto-item"><div class="casal-acerto-label">Lucas deve à Julia</div><div class="casal-acerto-valor" style="color:var(--amber)">${fmtCentavos(juliaRecebe)}</div><div class="casal-acerto-direcao">itens “A receber” de gastos pagos por ela</div></div>
       <div class="casal-acerto-item"><div class="casal-acerto-label">saldo líquido</div><div class="casal-acerto-valor" style="color:${cor}">${fmtCentavos(saldo)}</div><div class="casal-acerto-direcao">${direcao} · estornos bancários ficam fora</div></div>
     </div>
   </div>`;
