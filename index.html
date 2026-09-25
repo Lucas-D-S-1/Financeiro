@@ -1527,9 +1527,38 @@ function lerParcelasCasal(linhas){
   return mapa;
 }
 
-function parcelaIntegralDoOutro(r){
-  const loja=lojaNormalizadaParcela(r.desc);
-  return(parcelasCasal[perfil]||[]).some(x=>x.integral&&loja.includes(x.loja));
+function parcelaIntegralDoOutro(r,titular=perfil){
+  const loja=lojaNormalizadaParcela(r.desc),valor=r.valor||0;
+  return(parcelasCasal[titular]||[]).some(x=>x.integral&&loja.includes(x.loja)&&
+    (!x.valores.length||x.valores.some(v=>Math.abs(valor-v)<=1)));
+}
+
+// Parcelas no cartão da outra pessoa que serão pagas integralmente pelo perfil
+// ativo. A view SQL fornece o espelho para meses já lançados; aqui projetamos
+// as parcelas que ainda não chegaram em fatura.
+function parcelasIntegraisDoOutro(m,y){
+  const titular=perfil==="Lucas"?"Julia":"Lucas",map={};
+  (dadosPorPerfil[titular]||[]).map(applyOverride)
+    .filter(r=>r.tipo==="Parcela"&&r.mesFinal&&r.mesFinal!=="—"&&
+      parcelaIntegralDoOutro(r,titular))
+    .forEach(r=>{
+      const key=chaveParcela(r);
+      if(!map[key]||ordemMes(r.mes)>ordemMes(map[key].mes))map[key]=r;
+    });
+  const alvo=chaveMes(m,y),ms=mesStr(m,y);
+  return Object.values(map).filter(r=>{
+    const[mf,yf]=r.mesFinal.split("/").map(Number);
+    const[mi,yi]=r.mes.split("/").map(Number);
+    return alvo>=chaveMes(mi,yi)&&alvo<=chaveMes(mf,yf);
+  }).map(r=>{
+    const[mi,yi]=r.mes.split("/").map(Number);
+    const[mc,yc]=(r.mesCaixa||r.mes).split("/").map(Number);
+    const desloc=chaveMes(mc,yc)-chaveMes(mi,yi);
+    const caixa=alvo+desloc;
+    return{...r,mes:ms,mesCaixa:mesStr((caixa-1)%12+1,Math.floor((caixa-1)/12)),
+      ano:y,data:"01/"+ms,parcAtual:Math.min(r.parcTotal,r.parcAtual+alvo-chaveMes(mi,yi)),
+      projetado:true};
+  });
 }
 
 // Quanto de uma parcela do perfil ativo é do outro. No cartão do Lucas a Julia
@@ -1614,7 +1643,11 @@ function dadosProjetados(m,y){
     .filter(x=>x.pct>0).map(({r,pct})=>({...r,
       desc:`A receber · ${r.desc} (${Math.round(pct*100)}%)`,
       cat:CAT_ACERTO,valor:r.valor*pct,tipo:"Reembolso"}));
-  return[...fixos,...parcelas,...aReceberFixos,...aReceberParcelas];
+  const aPagarParcelas=parcelasIntegraisDoOutro(m,y).map(r=>({...r,
+    id:"pagar-proj-"+r.id,desc:`A pagar · ${r.desc} (100%)`,
+    cat:CAT_ACERTO,tipo:"Casa",cartao:"projetado",produto:"sintetico",
+    direcao:"Débito",fixo:true}));
+  return[...fixos,...parcelas,...aReceberFixos,...aReceberParcelas,...aPagarParcelas];
 }
 
 function dadosMes(m,y,cartao=""){
@@ -1655,8 +1688,13 @@ function dadosMes(m,y,cartao=""){
   // parcelas dela já são reais no caixa deste mês; não somar a projeção da
   // mesma linha uma segunda vez. O reembolso projetado continua separado.
   const reaisPorIdMes=new Set(reais.filter(r=>r.id).map(r=>`${r.id}|${r.mes}`));
-  const faltantes=proj.filter(r=>r.tipo==="Reembolso"||
-    !r.id||!reaisPorIdMes.has(`${r.id}|${r.mes}`));
+  const acertosReais=new Set(reais.filter(r=>r.desc&&r.desc.startsWith("A pagar ·"))
+    .map(r=>`${r.desc}|${r.mes}`));
+  const faltantes=proj.filter(r=>{
+    if(r.desc&&r.desc.startsWith("A pagar ·")&&
+       acertosReais.has(`${r.desc}|${r.mes}`))return false;
+    return r.tipo==="Reembolso"||!r.id||!reaisPorIdMes.has(`${r.id}|${r.mes}`);
+  });
   return[...reais,...faltantes];
 }
 
@@ -3142,10 +3180,12 @@ function projecaoDoMes(i,parcUnicas){
   while(m>12){m-=12;y++;}
   const str=mesStr(m,y);
 
-  // Compromissos declarados na Config. "Casa" é moradia, o resto vira Fixo —
-  // a projeção não tenta adivinhar assinatura vs conta.
+  // Compromissos declarados na Config. O A pagar de parcelas integrais
+  // entra no mesmo balde Casa do espelho SQL dos meses reais.
+  const aPagarParcelas=parcelasIntegraisDoOutro(m,y)
+    .reduce((s,r)=>s+r.valor,0);
   const totalCasa=compromissos.filter(c=>c.cat==="Casa")
-    .reduce((s,c)=>s+compromissoNoPainel(c),0);
+    .reduce((s,c)=>s+compromissoNoPainel(c),0)+aPagarParcelas;
   const totalFixoP=compromissos.filter(c=>c.cat!=="Casa")
     .reduce((s,c)=>s+compromissoNoPainel(c),0);
   const totalCompartilhado=compromissos.filter(c=>c.casal)
@@ -3172,7 +3212,7 @@ function projecaoDoMes(i,parcUnicas){
 
   return{m,y,str,totalCasa,totalFixoP,totalParc,parcelas,terminamMap,valorLiberado,
     totalCompartilhado,meuRateio,total:totalCasa+totalFixoP+totalParc,
-    suaParte:suaParteFixos+totalParcProprio};
+    suaParte:suaParteFixos+totalParcProprio+aPagarParcelas};
 }
 
 function renderizarProjecao(){
