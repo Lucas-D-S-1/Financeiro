@@ -3300,17 +3300,23 @@ function aReceberDoCasal(dados,m,y){
     .reduce((s,r)=>s+r.valor,0);
 }
 
-function cardAcertoCasal(lucasRecebe,juliaRecebe,ms){
+function cardAcertoCasal(lucasRecebe,juliaRecebe,ms,parcialL,parcialJ,semJuliaNoMes){
   const saldo=lucasRecebe-juliaRecebe;
+  const parcial=parcialL||parcialJ||semJuliaNoMes;
+  const aviso=semJuliaNoMes
+    ? "Não há gastos da Julia registrados em "+ms+"; nenhum valor que Lucas deva a ela foi descontado."
+    : parcial
+      ? "Há faturas incompletas neste mês; o saldo pode mudar."
+      : "Só gastos registrados entram no acerto; contas previstas aguardam o extrato.";
   const direcao=saldo>0.005?"Julia paga Lucas":saldo<-.005?"Lucas paga Julia":"ninguém transfere";
   const cor=saldo>0.005?"var(--accent2)":saldo<-.005?"var(--amber)":"var(--muted)";
   return`<div class="casal-acerto">
-    <div class="casal-total-linha"><span>acerto do casal em ${ms}</span><strong style="color:${cor}">${fmtCentavos(saldo)}</strong></div>
-    <div class="casal-total-sub">Só gastos registrados entram no acerto; contas previstas aguardam o extrato.</div>
+    <div class="casal-total-linha"><span>${parcial?"acerto parcial":"acerto do casal"} em ${ms}</span><strong style="color:${cor}">${fmtCentavos(saldo)}</strong></div>
+    <div class="casal-total-sub">${aviso}</div>
     <div class="casal-acerto-grid">
       <div class="casal-acerto-item"><div class="casal-acerto-label">Julia deve ao Lucas</div><div class="casal-acerto-valor" style="color:var(--accent2)">${fmtCentavos(lucasRecebe)}</div><div class="casal-acerto-direcao">itens “A receber” de gastos pagos por ele</div></div>
       <div class="casal-acerto-item"><div class="casal-acerto-label">Lucas deve à Julia</div><div class="casal-acerto-valor" style="color:var(--amber)">${fmtCentavos(juliaRecebe)}</div><div class="casal-acerto-direcao">itens “A receber” de gastos pagos por ela</div></div>
-      <div class="casal-acerto-item"><div class="casal-acerto-label">saldo líquido</div><div class="casal-acerto-valor" style="color:${cor}">${fmtCentavos(saldo)}</div><div class="casal-acerto-direcao">${direcao} · estornos bancários ficam fora</div></div>
+      <div class="casal-acerto-item"><div class="casal-acerto-label">saldo ${parcial?"parcial":"líquido"}</div><div class="casal-acerto-valor" style="color:${cor}">${fmtCentavos(saldo)}</div><div class="casal-acerto-direcao">${direcao}${parcial?" · provisório":""} · estornos bancários ficam fora</div></div>
     </div>
   </div>`;
 }
@@ -3336,8 +3342,10 @@ function renderizarCasal(){
 
   const lucasRecebe=aReceberDoCasal(dadosPorPerfil.Lucas,mesAtual.m,mesAtual.y);
   const juliaRecebe=aReceberDoCasal(dadosPorPerfil.Julia,mesAtual.m,mesAtual.y);
+  const semJuliaNoMes=!dadosPorPerfil.Julia.some(r=>
+    r.mes===ms&&(r.produto==="conta"||r.produto==="cartao"));
   const elA=document.getElementById("casal-acerto");
-  elA.innerHTML=cardAcertoCasal(lucasRecebe,juliaRecebe,ms);
+  elA.innerHTML=cardAcertoCasal(lucasRecebe,juliaRecebe,ms,parcialL,parcialJ,semJuliaNoMes);
 
   const elT=document.getElementById("casal-total");
   const temJulia=dadosPorPerfil.Julia.length;
