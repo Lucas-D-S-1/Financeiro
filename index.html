@@ -1465,7 +1465,11 @@ function ultimoMesReal(){
   // É o mesmo motivo do estorno futuro no comentário acima.
   const meses=getDisplayData().filter(r=>r.mes&&r.tipo!=="Reembolso")
     .map(r=>{const[m,y]=r.mes.split("/").map(Number);return chaveMes(m,y);});
-  return meses.length?Math.max(...meses):0;
+  // Uma fatura que vence em outubro pode fechar em setembro e já trazer
+  // parcelas com competência 10/2026. Isso não faz outubro ter acontecido:
+  // os compromissos e as outras parcelas ainda precisam ser projetados.
+  const hoje=mesDeHoje();
+  return meses.length?Math.min(Math.max(...meses),chaveMes(hoje.m,hoje.y)):0;
 }
 
 function mesEhProjetado(m,y){
@@ -1647,7 +1651,13 @@ function dadosMes(m,y,cartao=""){
   const proj=[...dadosProjetados(m,y),
               ...dadosProjetados((seg-1)%12+1,Math.floor((seg-1)/12))]
     .filter(r=>mesDe(r)===ms&&soDoBanco(r));
-  return[...reais,...proj];
+  // Uma fatura do mês seguinte pode chegar antes de virar o calendário. As
+  // parcelas dela já são reais no caixa deste mês; não somar a projeção da
+  // mesma linha uma segunda vez. O reembolso projetado continua separado.
+  const reaisPorIdMes=new Set(reais.filter(r=>r.id).map(r=>`${r.id}|${r.mes}`));
+  const faltantes=proj.filter(r=>r.tipo==="Reembolso"||
+    !r.id||!reaisPorIdMes.has(`${r.id}|${r.mes}`));
+  return[...reais,...faltantes];
 }
 
 // ── DRILL-DOWN POR CATEGORIA ──────────────────────────────
