@@ -1517,8 +1517,8 @@ function lerParcelasCasal(linhas){
   const mapa={Lucas:[],Julia:[]};
   (linhas||[]).forEach(r=>{
     const dono=String((r||[])[0]||"").trim();
-    const loja=String((r||[])[1]||"").trim().toUpperCase();
-    if(!mapa[dono]||!loja||loja==="LOJA")return;
+    const loja=String((r||[])[1]||"").trim();
+    if(!mapa[dono]||!loja||loja.toUpperCase()==="LOJA")return;
     mapa[dono].push({loja,
       // Vazio quer dizer "qualquer valor desta loja".
       valores:String(r[2]||"").split(";").map(valorBRL).filter(v=>v>0),
@@ -1527,9 +1527,18 @@ function lerParcelasCasal(linhas){
   return mapa;
 }
 
+function lojaConfereParcela(r,regra){
+  const normalizada=lojaNormalizadaParcela(r.desc);
+  if(normalizada.includes(regra.loja.toUpperCase()))return true;
+  // Algumas regras da base sao regex (ex.: Shopee com espacos e asterisco).
+  // Nao transformar a regra em maiusculas: isso mudaria \s para \S.
+  try{return new RegExp(regra.loja,"i").test(r.desc||"");}
+  catch{return false;}
+}
+
 function parcelaIntegralDoOutro(r,titular=perfil){
-  const loja=lojaNormalizadaParcela(r.desc),valor=r.valor||0;
-  return(parcelasCasal[titular]||[]).some(x=>x.integral&&loja.includes(x.loja)&&
+  const valor=r.valor||0;
+  return(parcelasCasal[titular]||[]).some(x=>x.integral&&lojaConfereParcela(r,x)&&
     (!x.valores.length||x.valores.some(v=>Math.abs(valor-v)<=1)));
 }
 
@@ -1563,14 +1572,50 @@ function parcelasIntegraisDoOutro(m,y){
 
 // Quanto de uma parcela do perfil ativo é do outro. No cartão do Lucas a Julia
 // paga 1−SPLIT_LUCAS; no cartão dela, o Lucas paga SPLIT_LUCAS.
-function pctDoOutroNaParcela(r){
-  if(parcelaIntegralDoOutro(r))return 1;
+function pctDoOutroNaParcela(r,titular=perfil){
+  if(parcelaIntegralDoOutro(r,titular))return 1;
   if(!SPLIT_LUCAS)return 0;
-  const loja=lojaNormalizadaParcela(r.desc);
   const v=r.valor||0;
-  const compartilhada=(parcelasCasal[perfil]||[]).some(x=>!x.integral&&loja.includes(x.loja)&&
+  const compartilhada=(parcelasCasal[titular]||[]).some(x=>!x.integral&&lojaConfereParcela(r,x)&&
     (!x.valores.length||x.valores.some(y=>Math.abs(v-y)<=1)));
-  return compartilhada?(perfil==="Lucas"?1-SPLIT_LUCAS:SPLIT_LUCAS):0;
+  return compartilhada?(titular==="Lucas"?1-SPLIT_LUCAS:SPLIT_LUCAS):0;
+}
+
+// Quando a fatura da Julia ainda nao chegou, as parcelas antigas do casal
+// continuam previsiveis pela ultima parcela conhecida. Elas sao mostradas
+// separadamente do A receber confirmado e somem quando a fatura real entra.
+function parcelasAntigasJuliaPendentes(m,y){
+  const alvo=chaveMes(m,y),ms=mesStr(m,y);
+  const linhas=dadosPorPerfil.Julia||[];
+  const atuais=new Set(linhas.filter(r=>r.tipo==="Parcela"&&mesDe(r)===ms)
+    .map(chaveParcela));
+  const ultimas=new Map();
+  linhas.filter(r=>r.tipo==="Parcela"&&r.mesFinal&&r.mesFinal!=="—"&&
+    pctDoOutroNaParcela(r,"Julia")>0).forEach(r=>{
+      const[mi,yi]=r.mes.split("/").map(Number);
+      if(!mi||!yi||chaveMes(mi,yi)>=alvo)return;
+      const chave=chaveParcela(r),anterior=ultimas.get(chave);
+      if(!anterior||ordemMes(r.mes)>ordemMes(anterior.mes))
+        ultimas.set(chave,r);
+    });
+  return [...ultimas.values()].filter(r=>{
+    const[mi,yi]=r.mes.split("/").map(Number);
+    const[mc,yc]=(r.mesCaixa||r.mes).split("/").map(Number);
+    const[mf,yf]=r.mesFinal.split("/").map(Number);
+    const competenciaAlvo=alvo-(chaveMes(mc,yc)-chaveMes(mi,yi));
+    return competenciaAlvo>chaveMes(mi,yi)&&
+      competenciaAlvo<=chaveMes(mf,yf)&&!atuais.has(chaveParcela(r));
+  }).map(r=>{
+    const[mi,yi]=r.mes.split("/").map(Number);
+    const[mc,yc]=(r.mesCaixa||r.mes).split("/").map(Number);
+    const competenciaAlvo=alvo-(chaveMes(mc,yc)-chaveMes(mi,yi));
+    const numero=Math.min(r.parcTotal,r.parcAtual+competenciaAlvo-chaveMes(mi,yi));
+    const sufixo=String(numero).padStart(2,"0")+"/"+String(r.parcTotal).padStart(2,"0");
+    const desc=/\d{1,2}\/\d{1,2}\s*$/.test(r.desc)
+      ?r.desc.replace(/\d{1,2}\/\d{1,2}\s*$/,sufixo)
+      :r.desc+" "+sufixo;
+    return{desc,valor:Math.round(r.valor*pctDoOutroNaParcela(r,"Julia")*100)/100};
+  });
 }
 
 // Quanto de um compromisso aparece no painel de quem está sendo visto, e
@@ -3300,22 +3345,30 @@ function aReceberDoCasal(dados,m,y){
     .reduce((s,r)=>s+r.valor,0);
 }
 
-function cardAcertoCasal(lucasRecebe,juliaRecebe,ms,parcialL,parcialJ,semJuliaNoMes){
-  const saldo=lucasRecebe-juliaRecebe;
-  const parcial=parcialL||parcialJ||semJuliaNoMes;
-  const aviso=semJuliaNoMes
-    ? "Não há gastos da Julia registrados em "+ms+"; nenhum valor que Lucas deva a ela foi descontado."
-    : parcial
-      ? "Há faturas incompletas neste mês; o saldo pode mudar."
-      : "Só gastos registrados entram no acerto; contas previstas aguardam o extrato.";
+function cardAcertoCasal(lucasRecebe,juliaRecebe,ms,parcialL,parcialJ,semJuliaNoMes,parcelasPrevistas=[]){
+  const juliaPrevisto=parcelasPrevistas.reduce((s,r)=>s+r.valor,0);
+  const saldo=lucasRecebe-juliaRecebe-juliaPrevisto;
+  const parcial=parcialL||parcialJ||semJuliaNoMes||juliaPrevisto>0;
+  const aviso=juliaPrevisto>0
+    ? "As parcelas antigas do cartão da Julia foram abatidas como previsão; a fatura ainda precisa confirmar os valores."
+    : semJuliaNoMes
+      ? "Não há gastos da Julia registrados em "+ms+"; nenhum valor que Lucas deva a ela foi descontado."
+      : parcial
+        ? "Há faturas incompletas neste mês; o saldo pode mudar."
+        : "Só gastos registrados entram no acerto; contas previstas aguardam o extrato.";
+  const detalheParcelas=parcelasPrevistas.length
+    ? '<div class="casal-total-sub">Parcelas previstas da Julia: '+
+      parcelasPrevistas.map(r=>esc(r.desc)+" "+fmtCentavos(r.valor)).join(" · ")+"</div>"
+    : "";
   const direcao=saldo>0.005?"Julia paga Lucas":saldo<-.005?"Lucas paga Julia":"ninguém transfere";
   const cor=saldo>0.005?"var(--accent2)":saldo<-.005?"var(--amber)":"var(--muted)";
   return`<div class="casal-acerto">
     <div class="casal-total-linha"><span>${parcial?"acerto parcial":"acerto do casal"} em ${ms}</span><strong style="color:${cor}">${fmtCentavos(saldo)}</strong></div>
     <div class="casal-total-sub">${aviso}</div>
+    ${detalheParcelas}
     <div class="casal-acerto-grid">
       <div class="casal-acerto-item"><div class="casal-acerto-label">Julia deve ao Lucas</div><div class="casal-acerto-valor" style="color:var(--accent2)">${fmtCentavos(lucasRecebe)}</div><div class="casal-acerto-direcao">itens “A receber” de gastos pagos por ele</div></div>
-      <div class="casal-acerto-item"><div class="casal-acerto-label">Lucas deve à Julia</div><div class="casal-acerto-valor" style="color:var(--amber)">${fmtCentavos(juliaRecebe)}</div><div class="casal-acerto-direcao">itens “A receber” de gastos pagos por ela</div></div>
+      <div class="casal-acerto-item"><div class="casal-acerto-label">Lucas deve à Julia</div><div class="casal-acerto-valor" style="color:var(--amber)">${fmtCentavos(juliaRecebe+juliaPrevisto)}</div><div class="casal-acerto-direcao">${juliaPrevisto>0?fmtCentavos(juliaRecebe)+" lançado + "+fmtCentavos(juliaPrevisto)+" previsto":"itens “A receber” de gastos pagos por ela"}</div></div>
       <div class="casal-acerto-item"><div class="casal-acerto-label">saldo ${parcial?"parcial":"líquido"}</div><div class="casal-acerto-valor" style="color:${cor}">${fmtCentavos(saldo)}</div><div class="casal-acerto-direcao">${direcao}${parcial?" · provisório":""} · estornos bancários ficam fora</div></div>
     </div>
   </div>`;
@@ -3344,8 +3397,10 @@ function renderizarCasal(){
   const juliaRecebe=aReceberDoCasal(dadosPorPerfil.Julia,mesAtual.m,mesAtual.y);
   const semJuliaNoMes=!dadosPorPerfil.Julia.some(r=>
     r.mes===ms&&(r.produto==="conta"||r.produto==="cartao"));
+  const parcelasPrevistas=parcelasAntigasJuliaPendentes(mesAtual.m,mesAtual.y);
   const elA=document.getElementById("casal-acerto");
-  elA.innerHTML=cardAcertoCasal(lucasRecebe,juliaRecebe,ms,parcialL,parcialJ,semJuliaNoMes);
+  elA.innerHTML=cardAcertoCasal(lucasRecebe,juliaRecebe,ms,parcialL,parcialJ,
+    semJuliaNoMes,parcelasPrevistas);
 
   const elT=document.getElementById("casal-total");
   const temJulia=dadosPorPerfil.Julia.length;
