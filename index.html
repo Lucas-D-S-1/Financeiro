@@ -1740,6 +1740,10 @@ function dadosMes(m,y,cartao=""){
   const acertosReais=new Set(reais.filter(r=>r.desc&&r.desc.startsWith("A pagar ·"))
     .map(r=>`${r.desc}|${r.mes}`));
   const faltantes=proj.filter(r=>{
+    // O acerto de um mês com lançamentos reais mostra só o que foi registrado.
+    // A parcela do mês seguinte pode cair no mesmo mês de caixa, mas seu
+    // reembolso estimado não é uma nova dívida confirmada pelo casal.
+    if(r.cat===CAT_ACERTO&&!mesEhProjetado(m,y))return false;
     if(r.desc&&r.desc.startsWith("A pagar ·")&&
        acertosReais.has(`${r.desc}|${r.mes}`))return false;
     return r.tipo==="Reembolso"||!r.id||!reaisPorIdMes.has(`${r.id}|${r.mes}`);
@@ -1774,14 +1778,18 @@ function detalheCategoria(txs,cat){
     <span class="cat-det-data">${esc((r.data||"").slice(0,5))}</span>
     <span class="cat-det-desc" title="${esc(nomeNoDetalhe(r,cat))}">${esc(nomeNoDetalhe(r,cat))}</span>
     <span class="cat-det-tipo">${esc(cat===CAT_ACERTO?(sinal<0?"a receber de "+outroPerfil():"a pagar a "+outroPerfil()):r.tipo||"")}${cat!==CAT_ACERTO&&r.parcTotal>1?` ${r.parcAtual}/${r.parcTotal}`:""}</span>
-    <span class="cat-det-val"${sinal<0?' style="color:var(--green)"':""}>${sinal<0?"−":""}${cat===CAT_ACERTO?fmtCentavos(r.valor):fmt(r.valor)}</span>
+    <span class="cat-det-val"${sinal<0?' style="color:var(--green)"':""}>${cat===CAT_ACERTO?"":sinal<0?"−":""}${cat===CAT_ACERTO?fmtCentavos(r.valor):fmt(r.valor)}</span>
   </div>`).join("");
   const soma=itens.reduce((s,{r,sinal})=>s+r.valor*sinal,0);
+  const totalNome=cat===CAT_ACERTO
+    ? soma<-.005?`saldo a receber de ${esc(outroPerfil())}`
+      : soma>.005?`saldo a pagar a ${esc(outroPerfil())}`:"saldo zerado"
+    : `${itens.length} lançamento${itens.length>1?"s":""}`;
   const aviso=(cat===CAT_ACERTO&&!isLiq())
     ? `<div class="cat-det-linha" style="color:var(--muted)"><span class="cat-det-desc">o total na linha acima mostra só o que você deve — o toggle está em bruto. O líquido é o número ao lado.</span></div>`
     : "";
   return`<tr class="cat-detalhe"><td colspan="4"><div class="cat-det-box">${linhas}${aviso}
-    <div class="cat-det-rodape"><span>${itens.length} lançamento${itens.length>1?"s":""}</span><span>${soma<0?"−":""}${cat===CAT_ACERTO?fmtCentavos(soma):fmt(soma)}</span></div>
+    <div class="cat-det-rodape"><span>${totalNome}</span><span>${cat===CAT_ACERTO?"":soma<0?"−":""}${cat===CAT_ACERTO?fmtCentavos(soma):fmt(soma)}</span></div>
   </div></td></tr>`;
 }
 
@@ -1973,7 +1981,7 @@ function renderizarMes(){
         : recebe
           ? `a receber de ${outroPerfil()} pelos lançamentos registrados; previsões no card do casal`
           : `a pagar a ${outroPerfil()} pelos lançamentos registrados; previsões no card do casal`;
-      linha=`<tr class="cat-row${recebe?" credito":""}${aberta?" aberta":""}" data-cat="${cat}"><td class="cat-name">${chevron}${rotuloCat(cat)}<span class="cat-fech-nota">${nota}</span></td><td></td><td class="cat-vals">${recebe?"−":""}${fmtCentavos(val)}</td><td class="cat-status">${recebe?"💚":"🤝"}</td></tr>`;
+      linha=`<tr class="cat-row${recebe?" credito":""}${aberta?" aberta":""}" data-cat="${cat}"><td class="cat-name">${chevron}${rotuloCat(cat)}<span class="cat-fech-nota">${nota}</span></td><td></td><td class="cat-vals">${fmtCentavos(val)}</td><td class="cat-status">${recebe?"💚":"🤝"}</td></tr>`;
     }else if(val<0){
       // Crédito: não tem orçamento para comparar nem barra que faça sentido.
       linha=`<tr class="cat-row credito${aberta?" aberta":""}" data-cat="${cat}"><td class="cat-name">${chevron}${rotuloCat(cat)}<span class="cat-fech-nota">volta pro bolso quando ${outroPerfil()} acertar</span></td><td></td><td class="cat-vals">−${fmt(val)}</td><td class="cat-status">💚</td></tr>`;
