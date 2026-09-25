@@ -1790,7 +1790,10 @@ function lancamentosDaCategoria(txs,cat){
 
 function nomeNoDetalhe(r,cat){
   const nome=String(r.desc||"");
-  return cat===CAT_ACERTO?nome.replace(/^A (receber|pagar) · /i,""):nome;
+  return cat===CAT_ACERTO
+    ? nome.replace(/^A (receber|pagar) · /i,"")
+      .replace(/\s+\(\d+%(?: de R\$ [\d.,]+)?\)$/i,"")
+    : nome;
 }
 
 function detalheCategoria(txs,cat){
