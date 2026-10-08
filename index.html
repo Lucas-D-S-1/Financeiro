@@ -245,11 +245,18 @@ main{padding:28px 32px;max-width:1260px;margin:0 auto;}
 .valor-debito{color:var(--text);font-family:var(--mono);text-align:right;white-space:nowrap;}
 
 /* ── PROJEÇÃO ── */
-.proj-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
-.proj-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:20px;position:relative;}
+.proj-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;}
+.proj-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:20px;position:relative;min-width:0;}
+.proj-nav{display:flex;align-items:center;gap:12px;}
+.proj-nav button{min-width:44px;min-height:44px;}
+.proj-nota{color:var(--muted);font-size:12px;line-height:1.6;margin-bottom:20px;}
+.proj-status{color:var(--blue);font-size:11px;margin-bottom:12px;}
+.proj-resumo{border-top:1px solid var(--border);margin-top:12px;padding-top:8px;}
+.proj-acerto{font-size:12px;line-height:1.6;color:var(--accent2);margin:10px 0;}
+.proj-abrir{width:100%;min-height:44px;margin-top:12px;}
 .proj-month{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px;}
 .proj-totals{margin-bottom:14px;}
-.proj-total-bruto{font-size:13px;color:var(--muted);font-family:var(--mono);text-decoration:line-through;margin-bottom:2px;}
+.proj-total-bruto{font-size:13px;color:var(--muted);font-family:var(--mono);margin-bottom:2px;}
 .proj-total-liq{font-size:22px;font-weight:300;color:var(--amber);}
 .proj-total-liq.ok{color:var(--green);}
 
@@ -263,10 +270,10 @@ main{padding:28px 32px;max-width:1260px;margin:0 auto;}
 /* Parcelas que terminam */
 .proj-termina{margin-top:14px;border-top:1px solid var(--border);padding-top:12px;}
 .proj-termina-title{font-size:10px;font-family:var(--mono);color:var(--green);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;}
-.proj-item{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border);}
+.proj-item{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border);}
 .proj-item:last-child{border-bottom:none;}
-.proj-item-label{color:var(--muted);}
-.proj-item-val{font-family:var(--mono);}
+.proj-item-label{color:var(--muted);min-width:0;overflow-wrap:anywhere;}
+.proj-item-val{font-family:var(--mono);white-space:nowrap;}
 .proj-liberado{display:flex;justify-content:space-between;font-size:12px;padding:6px 0 0;margin-top:4px;}
 .proj-liberado span:first-child{color:var(--green);}
 .proj-liberado span:last-child{font-family:var(--mono);color:var(--green);}
@@ -340,6 +347,7 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
 .cat-det-data{font-family:var(--mono);font-size:10px;color:var(--muted);}
 .cat-det-desc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);}
 .cat-det-tipo{font-family:var(--mono);font-size:10px;color:var(--muted);text-align:right;}
+.cat-det-grupo{display:flex;justify-content:space-between;gap:12px;padding:10px 0 4px;font-family:var(--mono);font-size:11px;color:var(--text);border-bottom:1px solid var(--border2);}
 .cat-det-val{font-family:var(--mono);text-align:right;min-width:76px;}
 .cat-det-rodape{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border2);font-family:var(--mono);font-size:11px;color:var(--muted);}
 .cat-det-previsao{margin:10px 0 4px;padding-top:8px;border-top:1px dashed var(--border2);font-family:var(--mono);font-size:10px;color:var(--blue);}
@@ -517,6 +525,7 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
         <span id="month-label"></span>
         <button onclick="navMes(1)" aria-label="próximo mês">&#8594;</button>
         <button class="month-today" id="month-today" onclick="irParaHoje()">hoje</button>
+        <button id="atualizar-dados" onclick="atualizarDados()" title="Atualizar dados e previsões" aria-label="Atualizar dados e previsões">↻</button>
       </div>
       <div class="cartao-filter">
         <select id="cartao-sel" onchange="renderAll()">
@@ -558,6 +567,7 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
     <button type="button" class="tab active" role="tab" aria-selected="true" onclick="setTab('mes',this)">resumo</button>
     <button type="button" class="tab" role="tab" aria-selected="false" onclick="setTab('transacoes',this)">transações</button>
     <button type="button" class="tab" role="tab" aria-selected="false" onclick="setTab('historico',this)">histórico</button>
+    <button type="button" class="tab" role="tab" aria-selected="false" onclick="setTab('planejamento',this)">planejamento</button>
     <button type="button" class="tab" role="tab" aria-selected="false" onclick="setTab('investimentos',this)">investimentos</button>
   </div>
 
@@ -649,6 +659,23 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
           </table>
         </div>
       </div>
+    </div>
+
+    <div id="tab-planejamento" class="tab-content">
+      <div class="section-hdr">
+        <span class="section-title">planejamento por mês de caixa</span>
+        <div class="proj-nav" aria-label="ano do planejamento">
+          <button type="button" class="action-btn" aria-label="ano anterior" onclick="navAnoPlanejamento(-1)">←</button>
+          <strong id="proj-ano" aria-live="polite"></strong>
+          <button type="button" class="action-btn" aria-label="próximo ano" onclick="navAnoPlanejamento(1)">→</button>
+        </div>
+      </div>
+      <div class="proj-nota">Janeiro a dezembro, pelo mês em que o dinheiro sai da conta.
+        Previsões usam compromissos ativos, parcelas em aberto e a média configurada de Uber/99 dos meses fechados;
+        gastos observados abatem essa média. O acerto previsto inclui o rateio e os reembolsos do casal.
+        Não inclui compras novas nem reajustes. Abra um mês para conferir as categorias e os lançamentos.</div>
+      <div id="proj-loading" class="coming-soon">carregando planejamento…</div>
+      <div id="proj-content" style="display:none"><div id="proj-grid" class="proj-grid"></div></div>
     </div>
 
     <!-- Fila de revisão: o que o bot propôs e ainda ninguém confirmou. -->
@@ -859,8 +886,6 @@ const outroPerfil=()=>perfil==="Lucas"?"Julia":"Lucas";
 // Piso conservador de renda. Vem da aba Config para não ficar exposto neste
 // arquivo, que é servido publicamente. 0 = ainda não carregado.
 let RENDA_PISO=0;
-// A planilha antiga projetava 6 meses; a projeção fazia 3.
-const MESES_PROJETADOS=6;
 // Compromissos fixos declarados na Config (B33:E45). Antes a projeção tentava
 // inferi-los de `parcTotal===999`, um marcador da planilha manual antiga que a
 // base nova nunca produz — resultado: projetava R$ 0 de fixos. E os que não
@@ -884,6 +909,8 @@ const configPorPerfil={Lucas:{compromissos:[],orcamentos:{},piso:0},
 // os dados carregavam, e continuar em abril se a carga demorasse ou falhasse.
 const mesDeHoje=()=>{const d=new Date();return{m:d.getMonth()+1,y:d.getFullYear()};};
 let mesAtual=mesDeHoje();
+// Abre no próximo ano completo. O ano escolhido independe do mês do resumo.
+let anoPlanejamento=mesDeHoje().y+1;
 let direcaoFiltro="";
 // A fatura é um recorte diferente da competência: ela junta as parcelas do mês
 // com as compras à vista feitas depois do fechamento anterior, que ficam na
@@ -1660,9 +1687,24 @@ function nomeParcelaAntiga(desc){
 // O detalhe do acerto acrescenta a previsão de dívida com a Julia somente
 // quando o mês já tem lançamentos reais. A categoria continua mostrando o
 // valor registrado; a previsão aparece abaixo, separada e identificada.
+function parcelasPendentesNoAcerto(m,y,temPrevisao=false){
+  return !temPrevisao&&!mesEhProjetado(m,y)?parcelasAntigasJuliaPendentes(m,y):[];
+}
 function parcelasPrevistasDoAcerto(cat){
-  return cat===CAT_ACERTO&&!cartaoFil()&&!mesEhProjetado(mesAtual.m,mesAtual.y)
-    ? parcelasAntigasJuliaPendentes(mesAtual.m,mesAtual.y):[];
+  return cat===CAT_ACERTO&&!cartaoFil()
+    ? parcelasPendentesNoAcerto(mesAtual.m,mesAtual.y):[];
+}
+
+// Mesmo acerto no planejamento e no detalhe: a dívida histórica pendente
+// fica separada dos gastos registrados e não duplica espelhos já previstos.
+function resumoAcertoDoMes(m,y,linhasL,linhasJ){
+  const explicitas=[...linhasL,...linhasJ].some(r=>r.projetado);
+  const pendentes=parcelasPendentesNoAcerto(m,y,explicitas);
+  const lucasRecebe=aReceberDoCasal(linhasL,m,y);
+  const juliaRecebeRegistrado=aReceberDoCasal(linhasJ,m,y);
+  const juliaRecebe=juliaRecebeRegistrado+pendentes.reduce((s,r)=>s+r.valor,0);
+  return {lucasRecebe,juliaRecebe,juliaRecebeRegistrado,pendentes,
+    acerto:lucasRecebe-juliaRecebe,temPrevisao:explicitas||pendentes.length>0};
 }
 
 // Quanto de um compromisso aparece no painel de quem está sendo visto, e
@@ -1677,7 +1719,7 @@ const compromissoMeu=c=>c.casal&&SPLIT_LUCAS?c.valor*meuRateioAtual():c.valor;
 const centavos=v=>Math.round((v+Number.EPSILON)*100)/100;
 const mesDaChave=k=>mesStr((k-1)%12+1,Math.floor((k-1)/12));
 function linhasDoPerfil(quem){
-  return quem===perfil?getDisplayData():(dadosPorPerfil[quem]||[]).map(applyOverride);
+  return quem===perfil?getDisplayData():comPerfilParaCalculo(quem,getDisplayData);
 }
 
 // Projeta pela identidade da compra e pelo mês em que a parcela sai da conta.
@@ -1781,11 +1823,16 @@ function dadosMes(m,y,cartao=""){
 }
 
 // Calcula os dois perfis sem alterar a seleção da pessoa no celular.
+function comPerfilParaCalculo(quem,calcular){
+  const anterior={perfil,allData,compromissos,movimentos};
+  try{
+    perfil=quem;allData=dadosPorPerfil[quem];compromissos=configPorPerfil[quem].compromissos;
+    movimentos=movimentosPorPerfil[quem];
+    return calcular();
+  }finally{({perfil,allData,compromissos,movimentos}=anterior);}
+}
 function dadosMesDoPerfil(quem,m,y){
-  const anterior={perfil,allData,compromissos};
-  try{perfil=quem;allData=dadosPorPerfil[quem];compromissos=configPorPerfil[quem].compromissos;
-    return dadosMes(m,y);
-  }finally{({perfil,allData,compromissos}=anterior);}
+  return comPerfilParaCalculo(quem,()=>dadosMes(m,y));
 }
 
 // ── DRILL-DOWN POR CATEGORIA ──────────────────────────────
@@ -1805,6 +1852,8 @@ function lancamentosDaCategoria(txs,cat){
 
 function nomeNoDetalhe(r,cat){
   const nome=String(r.desc||"");
+  if(r.origem==="media_movel_residual")return nome.replace(/\s*\([^)]*\)\s*$/,"")+" · restante previsto";
+  if(r.projetado&&cat!==CAT_ACERTO)return nome+" · previsão";
   return cat===CAT_ACERTO
     ? nome.replace(/^A (receber|pagar) · /i,"")
       .replace(/\s+\(\d+%(?: de R\$ [\d.,]+)?\)$/i,"")
@@ -1816,7 +1865,7 @@ function detalheCategoria(txs,cat){
   if(!itens.length)return"";
   const previstas=parcelasPrevistasDoAcerto(cat);
   const totalPrevisto=previstas.reduce((s,r)=>s+r.valor,0);
-  const linhas=itens.map(({r,sinal})=>{
+  const montarLinhas=lista=>lista.map(({r,sinal})=>{
     const valor=cat===CAT_ACERTO
       ? `${sinal>0?"−":""}${fmtCentavos(r.valor)}`
       : `${sinal<0?"−":""}${fmt(r.valor)}`;
@@ -1830,6 +1879,17 @@ function detalheCategoria(txs,cat){
       <span class="cat-det-val"${cor?` style="color:${cor}"`:""}>${valor}</span>
     </div>`;
   }).join("");
+  const grupo=(lista,recebe)=>{
+    if(!lista.length)return"";
+    const observado=lista.filter(x=>!x.r.projetado).reduce((s,x)=>s+x.r.valor,0);
+    const previsto=lista.filter(x=>x.r.projetado).reduce((s,x)=>s+x.r.valor,0);
+    const nota=previsto>0?`${observado>0?"observado "+fmtCentavos(observado)+" + ":""}previsto ${fmtCentavos(previsto)}`:"gastos registrados";
+    return `<div class="cat-det-grupo"><span>${recebe?"a receber de ":"a pagar a "}${esc(outroPerfil())}</span><strong>${recebe?"":"−"}${fmtCentavos(observado+previsto)}</strong></div>`+
+      `<div class="cat-det-previsao">${nota}</div>`+montarLinhas(lista);
+  };
+  const linhas=cat===CAT_ACERTO
+    ? grupo(itens.filter(x=>x.sinal<0),true)+grupo(itens.filter(x=>x.sinal>0),false)
+    : montarLinhas(itens);
   const soma=itens.reduce((s,{r,sinal})=>s+r.valor*sinal,0);
   // Sinal do ponto de vista do perfil: receber soma, pagar subtrai.
   const saldoUsuario=-soma+(perfil==="Lucas"?-totalPrevisto:totalPrevisto);
@@ -1882,6 +1942,22 @@ function renderAll(){
   document.getElementById("month-label").textContent=mesStr(mesAtual.m,mesAtual.y);
   atualizarNavegacaoMes();
   renderizarMes();renderTransacoes();renderizarHistorico();renderInvestimentos();
+  renderizarProjecao();
+}
+
+async function atualizarDados(){
+  const botao=document.getElementById("atualizar-dados");
+  if(botao.disabled)return;
+  const contexto={perfil,mes:{...mesAtual},categorias:[...catsAbertas]};
+  botao.disabled=true;
+  try{
+    await carregarTudo();
+    perfil=contexto.perfil;aplicarPerfil();mesAtual=contexto.mes;
+    catsAbertas.clear();contexto.categorias.forEach(c=>catsAbertas.add(c));
+    renderAll();
+  }
+  catch(erro){document.getElementById("reemb-alert-area").innerHTML=`<div class="reemb-alert">Não foi possível atualizar os dados. Tente novamente.</div>`;}
+  finally{botao.disabled=false;}
 }
 
 // ── MÊS ATUAL ─────────────────────────────────────────────
@@ -1944,6 +2020,8 @@ function renderizarMes(){
       este recorte mostra o que entra na fatura, para bater com o app do banco.
       ${fora>0?`Ficam de fora ${fmt(fora)} de movimentação da conta corrente — estão na aba transações.`
               :"Compromissos fixos não aparecem aqui: não pertencem a um banco."}
+      O acerto do casal e as estimativas de fixos e médias ficam fora deste recorte.
+      Selecione todas as contas/cartões para ver o orçamento com previsões.
       </div></div>`;
   }
   alertArea.innerHTML=avisos;
@@ -3309,42 +3387,70 @@ function getParcUnicas(){
 // Os números de um mês futuro. Existe uma função só porque a aba "projeção" e o
 // resumo da tela principal mostram o mesmo mês: se cada uma calculasse por
 // conta, uma hora divergiriam e o painel passaria a se contradizer.
-function projecaoDoMes(i,parcUnicas){
-  let m=mesAtual.m+i,y=mesAtual.y;
-  while(m>12){m-=12;y++;}
+function planejamentoDoMes(m,y){
   const str=mesStr(m,y);
-
-  const txs=dadosMes(m,y);
+  const linhasL=dadosMesDoPerfil("Lucas",m,y),linhasJ=dadosMesDoPerfil("Julia",m,y);
+  const txs=perfil==="Lucas"?linhasL:linhasJ;
   const parcelas=txs.filter(r=>r.tipo==="Parcela");
   const totalParc=parcelas.reduce((s,r)=>s+r.valor,0);
   const totalCasa=txs.filter(r=>r.tipo==="Casa").reduce((s,r)=>s+r.valor,0);
-  const totalFixoP=txs.filter(r=>!["Parcela","Casa","Reembolso"].includes(r.tipo)).reduce((s,r)=>s+r.valor,0);
-  const total=totalCasa+totalFixoP+totalParc;
-  const suaParte=total-txs.filter(r=>r.tipo==="Reembolso").reduce((s,r)=>s+r.valor,0);
+  const totalFixoP=txs.filter(r=>["Fixo","Assinatura"].includes(r.tipo)).reduce((s,r)=>s+r.valor,0);
+  const totalVariavel=txs.filter(r=>!["Parcela","Casa","Reembolso","Fixo","Assinatura"].includes(r.tipo)).reduce((s,r)=>s+r.valor,0);
+  const reembolsos=reembolsosMes(txs);
+  const total=totalCasa+totalFixoP+totalVariavel+totalParc;
+  const suaParte=total-reembolsos;
+  const lucas=resumoPessoa(linhasL,m,y),julia=resumoPessoa(linhasJ,m,y);
+  const {lucasRecebe,juliaRecebe,acerto,temPrevisao,pendentes}=resumoAcertoDoMes(m,y,linhasL,linhasJ);
+  const mobilidadePrevista=txs.filter(r=>r.origem==="media_movel_residual").reduce((s,r)=>s+r.valor,0);
   const terminamMap={};
   for(const r of parcelas){
     const finalCaixa=ordemMes(r.mesFinal)+ordemMes(mesDe(r))-ordemMes(r.mes);
     if(finalCaixa===chaveMes(m,y))terminamMap[r.rotulo||r.desc]=(terminamMap[r.rotulo||r.desc]||0)+r.valor;
   }
   const valorLiberado=Object.values(terminamMap).reduce((s,v)=>s+v,0);
-  return {m,y,str,totalCasa,totalFixoP,totalParc,parcelas,terminamMap,valorLiberado,
-    totalCompartilhado:0,meuRateio:meuRateioAtual(),total,suaParte};
+  return {m,y,str,totalCasa,totalFixoP,totalVariavel,totalParc,parcelas,terminamMap,valorLiberado,
+    meuRateio:meuRateioAtual(),total,suaParte,reembolsos,lucas,julia,lucasRecebe,juliaRecebe,
+    acerto,temPrevisao,mobilidadePrevista,pendentes};
+}
+
+// Mantém a entrada relativa usada pelos consumidores do resumo antigo.
+function projecaoDoMes(i){
+  const alvo=chaveMes(mesAtual.m,mesAtual.y)+i;
+  return planejamentoDoMes((alvo-1)%12+1,Math.floor((alvo-1)/12));
+}
+
+function navAnoPlanejamento(dir){
+  anoPlanejamento+=dir;
+  renderizarProjecao();
+}
+
+function abrirMesPlanejado(m,y){
+  mesAtual={m,y};
+  // O card anual soma todos os bancos; o resumo precisa abrir no mesmo recorte.
+  document.getElementById("cartao-sel").value="";
+  lembrarMes();
+  renderAll();
+  const aba=[...document.querySelectorAll(".tab")]
+    .find(t=>(t.getAttribute("onclick")||"").includes("'mes'"));
+  if(aba)setTab("mes",aba);
 }
 
 function renderizarProjecao(){
-  const parcUnicas=getParcUnicas();
   const cards=[];
-  for(let i=1;i<=MESES_PROJETADOS;i++){
-    const{m,y,str,totalCasa,totalFixoP,totalParc,parcelas,terminamMap,
-      valorLiberado,total,suaParte,meuRateio}=projecaoDoMes(i,parcUnicas);
-    const totalBruto=total,casaLiq=totalCasa,totalAssin=0;
+  document.getElementById("proj-ano").textContent=anoPlanejamento;
+  const referenciaMobilidade=compromissos.filter(c=>c.origem==="media_movel")
+    .reduce((s,c)=>s+c.valor,0);
+  for(let m=1;m<=12;m++){
+    const y=anoPlanejamento;
+    const{str,totalCasa,totalFixoP,totalVariavel,totalParc,parcelas,terminamMap,
+      valorLiberado,total,suaParte,reembolsos,lucas,julia,acerto,temPrevisao,
+      mobilidadePrevista,pendentes}=planejamentoDoMes(m,y);
     const totalExibido=isLiq()?suaParte:total;
+    const moeda=v=>(v<-.005?"−":"")+fmtCentavos(v);
+    const grupos=[["casa e a pagar",totalCasa,"var(--blue)"],["fixos",totalFixoP,"var(--purple)"],
+      ["variáveis",totalVariavel,"var(--accent)"],["parcelas",totalParc,"var(--amber)"]];
 
     // Barras empilhadas — % do total
-    const segCasa=total>0?totalCasa/total*100:0;
-    const segFixo=total>0?totalFixoP/total*100:0;
-    const segAssin=0;
-    const segParc=total>0?totalParc/total*100:0;
 
     const topParc=Object.entries(
       parcelas.reduce((acc,r)=>{acc[r.desc]=(acc[r.desc]||0)+r.valor;return acc;},{})
@@ -3353,34 +3459,35 @@ function renderizarProjecao(){
     const terminamHTML=Object.entries(terminamMap).length>0?`
       <div class="proj-termina">
         <div class="proj-termina-title">✅ terminam neste mês</div>
-        ${Object.entries(terminamMap).map(([d,v])=>`<div class="proj-item"><span class="proj-item-label">${d.substring(0,22)}</span><span class="proj-item-val" style="color:var(--green)">${fmt(v)}</span></div>`).join("")}
-        <div class="proj-liberado"><span>→ libera por mês</span><span>+${fmt(valorLiberado)}</span></div>
+        ${Object.entries(terminamMap).map(([d,v])=>`<div class="proj-item"><span class="proj-item-label">${esc(d)}</span><span class="proj-item-val" style="color:var(--green)">${moeda(v)}</span></div>`).join("")}
+        <div class="proj-liberado"><span>→ deixa de sair do cartão</span><span>${moeda(valorLiberado)}</span></div>
       </div>`:"";
 
-    cards.push(`<div class="proj-card">
-      <div class="proj-month">${labelMes(m,y).toUpperCase()}</div>
+    cards.push(`<article class="proj-card" data-mes="${str}">
+      <div class="proj-month">${["","janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"][m]} / ${y}</div>
+      <div class="proj-status">${temPrevisao?"Inclui previsões":"Registrado"} · ${esc(perfil)} · ${isLiq()?"líquido":"bruto"}</div>
       <div class="proj-totals">
-        ${!isLiq()?"":`<div class="proj-total-bruto">${fmt(totalBruto)} bruto</div>`}
-        <div class="proj-total-liq ${total<RENDA_PISO?'ok':''}">${fmt(totalExibido)}</div>
+        <div class="proj-total-liq ${totalExibido<rendaDoMes(str)?'ok':''}">${moeda(totalExibido)}</div>
+        ${isLiq()?`<div class="proj-total-bruto">${moeda(total)} saindo · ${moeda(reembolsos)} a receber / reembolsos</div>`:""}
       </div>
-      <div class="stack-bars">
-        <div class="stack-seg" style="width:${segCasa}%;background:var(--blue)"></div>
-        <div class="stack-seg" style="width:${segFixo}%;background:var(--purple)"></div>
-        <div class="stack-seg" style="width:${segAssin}%;background:var(--accent)"></div>
-        <div class="stack-seg" style="width:${segParc}%;background:var(--amber)"></div>
+      <div class="stack-bars" aria-label="composição das saídas brutas">
+        ${grupos.map(([nome,v,cor])=>`<div class="stack-seg" title="${nome}: ${moeda(v)}" style="width:${total>0?Math.max(v,0)/total*100:0}%;background:${cor}"></div>`).join("")}
       </div>
       <div class="stack-legend">
-        <div class="stack-leg-item"><div class="stack-dot" style="background:var(--blue)"></div>casa ${fmt(isLiq()?casaLiq:totalCasa)}</div>
-        <div class="stack-leg-item"><div class="stack-dot" style="background:var(--purple)"></div>fixos ${fmt(totalFixoP)}</div>
-        <div class="stack-leg-item"><div class="stack-dot" style="background:var(--amber)"></div>parcelas ${fmt(totalParc)}</div>
+        ${grupos.map(([nome,v,cor])=>`<div class="stack-leg-item"><div class="stack-dot" style="background:${cor}"></div>${nome} ${moeda(v)}</div>`).join("")}
       </div>
-      ${SPLIT_LUCAS&&Math.abs(total-suaParte)>0.5?`<div class="proj-rateio">
-        <span>sua parte, com rateio de ${(meuRateio*100).toFixed(2).replace(".",",")}%</span>
-        <strong>${fmt(suaParte)}</strong>
-      </div>`:""}
-      ${topParc.map(([d,v])=>`<div class="proj-item"><span class="proj-item-label">${d.substring(0,22)}</span><span class="proj-item-val">${fmt(v)}</span></div>`).join("")}
+      ${referenciaMobilidade>0?`<div class="proj-nota">Uber/99 · referência ${moeda(referenciaMobilidade)}; ${moeda(mobilidadePrevista)} ainda previsto, incluído em variáveis.</div>`:""}
+      <div class="proj-resumo">
+        <div class="proj-item"><span class="proj-item-label">Lucas · líquido</span><span class="proj-item-val">${moeda(lucas.liquido)}</span></div>
+        <div class="proj-item"><span class="proj-item-label">Julia · líquido</span><span class="proj-item-val">${moeda(julia.liquido)}</span></div>
+        <div class="proj-item"><span class="proj-item-label">Casal · líquido</span><span class="proj-item-val">${moeda(lucas.liquido+julia.liquido)}</span></div>
+      </div>
+      <div class="proj-acerto">Acerto ${temPrevisao?"previsto":"registrado"}: ${Math.abs(acerto)<.005?"zerado":`${acerto>0?"Julia → Lucas":"Lucas → Julia"} · ${fmtCentavos(acerto)}`}</div>
+      ${pendentes.length?`<div class="proj-nota">As parcelas pendentes da Julia entram no acerto previsto; os gastos registrados acima aguardam confirmação da fatura.</div>`:""}
+      ${topParc.map(([d,v])=>`<div class="proj-item"><span class="proj-item-label">${esc(d)}</span><span class="proj-item-val">${moeda(v)}</span></div>`).join("")}
       ${terminamHTML}
-    </div>`);
+      <button type="button" class="action-btn proj-abrir" onclick="abrirMesPlanejado(${m},${y})">ver ${str} no resumo →</button>
+    </article>`);
   }
   document.getElementById("proj-grid").innerHTML=cards.join("");
   document.getElementById("proj-loading").style.display="none";
