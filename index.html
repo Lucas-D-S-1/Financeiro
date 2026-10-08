@@ -1749,11 +1749,28 @@ function parcelasNoCaixa(m,y,quem=perfil){
   });
 }
 
+function parcelaOcupaReferencia(c,regra,m,y){
+  if(!regra||regra.intervalo_dias||c.origem==="media_movel")return false;
+  const padrao=new RegExp(regra.padrao,"i");
+  // A regra também deve identificar o compromisso, além da cobrança. Uma
+  // parcela acessória da mesma administradora não substitui o aluguel.
+  if(!padrao.test(c.desc))return false;
+  const ms=mesStr(m,y);
+  const candidatas=[...linhasDoPerfil(c.quemPaga).filter(r=>mesDe(r)===ms),
+    ...parcelasNoCaixa(m,y,c.quemPaga)]
+    .filter(r=>r.tipo==="Parcela"&&r.produto!=="sintetico"&&r.cat===c.cat&&
+      padrao.test(r.descOriginal||r.desc||""));
+  // Só uma identidade de compra pode ocupar a referência. Não fundir duas
+  // taxas ou empréstimos distintos apenas pelo nome do estabelecimento.
+  return new Set(candidatas.map(chaveParcela)).size===1;
+}
+
 function compromissosNoCaixa(m,y){
   const ms=mesStr(m,y),base={mes:ms,mesCaixa:ms,ano:y,projetado:true,
     cartao:"projetado",produto:"sintetico",parcAtual:1,parcTotal:1,mesFinal:ms};
   return compromissos.flatMap(c=>{
     const regra=regrasProjecao.find(x=>x.person===c.quemPaga&&x.descricao===c.desc);
+    if(parcelaOcupaReferencia(c,regra,m,y))return[];
     const observado=linhasDoPerfil(c.quemPaga).filter(r=>mesDe(r)===ms&&
       r.produto!=="sintetico"&&r.tipo!=="Reembolso"&&r.tipo!=="Parcela"&&
       (regra?new RegExp(regra.padrao,"i").test(r.descOriginal||r.desc||""):
