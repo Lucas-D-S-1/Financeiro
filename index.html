@@ -844,6 +844,7 @@ let contasPorEmail={};
 // base. A chave é `Perfil|MM/AAAA`, e o valor é a lista de bancos em aberto —
 // que o aviso passa a nomear, coisa que a frase fixa não fazia.
 const bancosEmAberto={};
+let coberturaCaixa=null,cartoesConfigurados=[],regrasProjecao=[],rotulosParcelas={},projecaoDesde={},referenciasParcelas={};
 const mesEhParcial=(quem,ms)=>Object.prototype.hasOwnProperty.call(bancosEmAberto,quem+"|"+ms);
 
 const dadosPorPerfil={Lucas:[],Julia:[]};
@@ -1239,6 +1240,16 @@ async function carregarTudo(){
 
   const P=d.parametros||{};
   const par=P.parametros||{};
+  coberturaCaixa=Array.isArray(P.cobertura_caixa)?P.cobertura_caixa:null;
+  cartoesConfigurados=P.cartoes||[];
+  regrasProjecao=P.projecao_compromissos||[];
+  rotulosParcelas=P.rotulos_parcelas||{};
+  projecaoDesde=P.projecao_desde||{};
+  referenciasParcelas=P.referencias_parcelas||{};
+  for(const quem of Object.keys(dadosPorPerfil)){
+    const originais=new Map((movimentosPorPerfil[quem]||[]).map(r=>[r.id,r.descOriginal]));
+    for(const r of dadosPorPerfil[quem])r.descOriginal=originais.get(r.id)||r.desc;
+  }
   const pessoas=P.pessoas||[];
   const doPerfil=q=>pessoas.find(p=>p.person===q)||{};
 
@@ -1464,26 +1475,29 @@ function posicionarMesInicial(){
 // resto (KPIs, categorias, drill-down) funciona sem saber que é projeção.
 const chaveMes=(m,y)=>y*12+m;
 
-// Só GASTO define até onde a base é real. Um crédito lançado em competência
-// futura — estorno em contestação, por exemplo — não pode fazer o painel achar
-// que aquele mês já aconteceu e desligar a projeção dele.
+// Cobertura é evidência por mês de CAIXA, independente da data do navegador.
+// Uma fatura antecipada pode cobrir o caixa anterior; uma compra isolada não
+// fecha o mês. A mesma função SQL que monta as linhas fornece a cobertura.
 function ultimoMesReal(){
-  // Por COMPETÊNCIA, não por caixa. O resto do painel agrega por caixa, mas
-  // "até onde os dados vão" é sobre o que já aconteceu — e uma compra de
-  // agosto cuja fatura vence em setembro não faz setembro já ter acontecido.
-  // É o mesmo motivo do estorno futuro no comentário acima.
-  const meses=getDisplayData().filter(r=>r.mes&&r.tipo!=="Reembolso")
-    .map(r=>{const[m,y]=r.mes.split("/").map(Number);return chaveMes(m,y);});
-  // Uma fatura que vence em outubro pode fechar em setembro e já trazer
-  // parcelas com competência 10/2026. Isso não faz outubro ter acontecido:
-  // os compromissos e as outras parcelas ainda precisam ser projetados.
-  const hoje=mesDeHoje();
-  return meses.length?Math.min(Math.max(...meses),chaveMes(hoje.m,hoje.y)):0;
+  const meses=getDisplayData().filter(r=>mesDe(r)&&r.tipo!=="Reembolso"&&
+    r.produto!=="sintetico"&&!r.projetado).map(r=>ordemMes(mesDe(r)));
+  return meses.length?Math.max(...meses):0;
 }
-
+const bancoChave=b=>String(b||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+function faturaCoberta(quem,banco,ms){
+  return(coberturaCaixa||[]).some(f=>f.person===quem&&
+    bancoChave(f.bank)===bancoChave(banco)&&f.mesCaixa===ms&&f.fecha);
+}
+function ultimoMesCoberto(quem=perfil){
+  if(coberturaCaixa===null)return ultimoMesReal(); // contrato anterior
+  const bancos=cartoesConfigurados.filter(c=>c.person===quem).map(c=>c.bank);
+  const meses=[...new Set(coberturaCaixa.filter(f=>f.person===quem).map(f=>f.mesCaixa))];
+  const completos=meses.filter(ms=>bancos.length&&bancos.every(b=>faturaCoberta(quem,b,ms)));
+  return completos.length?Math.max(...completos.map(ordemMes)):0;
+}
 function mesEhProjetado(m,y){
-  const ult=ultimoMesReal();
-  return ult>0&&chaveMes(m,y)>ult;
+  if(projecaoDesde[perfil])return chaveMes(m,y)>=ordemMes(projecaoDesde[perfil]);
+  return chaveMes(m,y)>ultimoMesCoberto();
 }
 
 // A mesma compra muda de grafia entre os PDFs e o OCR de agosto. Normaliza
@@ -1502,8 +1516,15 @@ function lojaNormalizadaParcela(desc){
     .filter(t=>t&&!RUIDO_DESC_PARCELA.has(t)).sort().join("");
 }
 function chaveParcela(r){
+  const vistas=new Set(),historico=Object.values(dadosPorPerfil).flat();
+  while(referenciasParcelas[r.id]&&!vistas.has(r.id)){
+    vistas.add(r.id);
+    const anterior=historico.find(x=>x.id===referenciasParcelas[r.id]);
+    if(!anterior)break;
+    r=anterior;
+  }
   const valorDecimos=Math.round((r.valor||0)*10);
-  return`${lojaNormalizadaParcela(r.desc)}||${r.mesFinal}||${r.parcTotal}||${valorDecimos}`;
+  return`${bancoChave(r.cartao)}||${lojaNormalizadaParcela(r.descOriginal||r.desc)}||${r.mesFinal}||${r.parcTotal}||${valorDecimos}`;
 }
 // Parcelas de casa, por titular do cartão — mesma lista do exportador
 // (`PARCELAS_CASAL` e `PARCELAS_CASAL_JULIA`). A descrição sozinha é ampla
@@ -1537,11 +1558,11 @@ function lerParcelasCasal(linhas){
 }
 
 function lojaConfereParcela(r,regra){
-  const normalizada=lojaNormalizadaParcela(r.desc);
+  const normalizada=lojaNormalizadaParcela(r.descOriginal||r.desc);
   if(normalizada.includes(regra.loja.toUpperCase()))return true;
   // Algumas regras da base sao regex (ex.: Shopee com espacos e asterisco).
   // Nao transformar a regra em maiusculas: isso mudaria \s para \S.
-  try{return new RegExp(regra.loja,"i").test(r.desc||"");}
+  try{return new RegExp(regra.loja,"i").test(r.descOriginal||r.desc||"");}
   catch{return false;}
 }
 
@@ -1653,124 +1674,118 @@ const euAdianto=c=>!c.casal||c.quemPaga===perfil;
 const compromissoNoPainel=c=>euAdianto(c)?c.valor:c.valor*meuRateioAtual();
 const compromissoMeu=c=>c.casal&&SPLIT_LUCAS?c.valor*meuRateioAtual():c.valor;
 
+const centavos=v=>Math.round((v+Number.EPSILON)*100)/100;
+const mesDaChave=k=>mesStr((k-1)%12+1,Math.floor((k-1)/12));
+function linhasDoPerfil(quem){
+  return quem===perfil?getDisplayData():(dadosPorPerfil[quem]||[]).map(applyOverride);
+}
+
+// Projeta pela identidade da compra e pelo mês em que a parcela sai da conta.
+// O id muda entre faturas: a substituição usa a chave persistida da parcela.
+function parcelasNoCaixa(m,y,quem=perfil){
+  const alvo=chaveMes(m,y),ms=mesStr(m,y),ultimas=new Map();
+  const linhas=linhasDoPerfil(quem).filter(r=>r.tipo==="Parcela"&&r.mesFinal&&
+    r.mesFinal!=="—"&&r.mesFinal!=="Recorrente"&&ordemMes(mesDe(r))<=alvo);
+  for(const r of linhas){
+    const k=chaveParcela(r),ant=ultimas.get(k);
+    if(!ant||ordemMes(r.mes)>ordemMes(ant.mes))ultimas.set(k,r);
+  }
+  return [...ultimas.values()].flatMap(r=>{
+    const origem=ordemMes(r.mes),desloc=ordemMes(mesDe(r))-origem;
+    const competencia=alvo-desloc,avanco=competencia-origem;
+    if(avanco<=0||competencia>ordemMes(r.mesFinal)||
+       r.parcAtual+avanco>r.parcTotal||faturaCoberta(quem,r.cartao,ms))return[];
+    // Uma fatura completa posterior que não trouxe esta chave encerra a
+    // previsão antiga. Evita ressuscitar séries que desapareceram da fatura.
+    if((coberturaCaixa||[]).some(f=>f.person===quem&&f.fecha&&
+      bancoChave(f.bank)===bancoChave(r.cartao)&&
+      ordemMes(f.mesCaixa)>ordemMes(mesDe(r))&&ordemMes(f.mesCaixa)<=alvo))return[];
+    return[{...r,mes:mesDaChave(competencia),mesCaixa:ms,ano:y,
+      data:"01/"+ms,parcAtual:r.parcAtual+avanco,projetado:true,
+      rotulo:rotulosParcelas[r.id]||r.rotulo||r.desc,
+      origem:"previsao_de_parcela",previsaoChave:"parcela|"+quem+"|"+chaveParcela(r)+"|"+ms}];
+  });
+}
+
+function compromissosNoCaixa(m,y){
+  const ms=mesStr(m,y),base={mes:ms,mesCaixa:ms,ano:y,projetado:true,
+    cartao:"projetado",produto:"sintetico",parcAtual:1,parcTotal:1,mesFinal:ms};
+  return compromissos.flatMap(c=>{
+    const regra=regrasProjecao.find(x=>x.person===c.quemPaga&&x.descricao===c.desc);
+    const observado=linhasDoPerfil(c.quemPaga).filter(r=>mesDe(r)===ms&&
+      r.produto!=="sintetico"&&r.tipo!=="Reembolso"&&r.tipo!=="Parcela"&&
+      (regra?new RegExp(regra.padrao,"i").test(r.descOriginal||r.desc||""):
+       lojaNormalizadaParcela(r.descOriginal||r.desc)===lojaNormalizadaParcela(c.desc)));
+    let eventos=[{data:"01/"+ms,valor:c.valor}];
+    if(regra&&regra.intervalo_dias){
+      const inicio=Date.UTC(y,m-1,1),fim=Date.UTC(y,m,1);
+      const ancora=Date.parse(regra.data_referencia+"T00:00:00Z"),passo=regra.intervalo_dias*86400000;
+      eventos=[];
+      for(let dia=ancora+Math.ceil((inicio-ancora)/passo)*passo;dia<fim;dia+=passo){
+        eventos.push({data:String(new Date(dia).getUTCDate()).padStart(2,"0")+"/"+ms,
+          valor:Number(regra.valor_por_evento),dia});
+      }
+      // Cada visita observada substitui no máximo uma visita prevista.
+      for(const r of observado){
+        const [d,mm,aa]=String(r.data||"").split("/").map(Number);
+        const dia=Date.UTC(aa,mm-1,d);
+        const candidatos=eventos.filter(e=>!e.confirmado).sort((a,b)=>Math.abs(a.dia-dia)-Math.abs(b.dia-dia));
+        if(candidatos[0]&&Math.abs(candidatos[0].dia-dia)<=passo/2)candidatos[0].confirmado=true;
+      }
+      eventos=eventos.filter(e=>!e.confirmado);
+    }else if(c.origem==="media_movel"){
+      eventos[0].valor=Math.max(c.valor-observado.reduce((s,r)=>s+r.valor,0),0);
+    }else if(observado.length)eventos=[];
+    return eventos.filter(e=>e.valor>0).flatMap(e=>{
+      const pct=meuRateioAtual(),key="compromisso|"+c.quemPaga+"|"+c.desc+"|"+e.data;
+      const gasto={...base,data:e.data,desc:euAdianto(c)?c.desc:`A pagar · ${c.desc} (${Math.round(pct*100)}%)`,
+        cat:euAdianto(c)?c.cat:CAT_ACERTO,valor:centavos(euAdianto(c)?e.valor:e.valor*pct),
+        tipo:euAdianto(c)?c.tipo||"Fixo":"Casa",origem:c.origem==="media_movel"?"media_movel_residual":"previsao_de_compromisso",
+        previsaoChave:key};
+      const pctOutro=SPLIT_LUCAS?(perfil==="Lucas"?1-SPLIT_LUCAS:SPLIT_LUCAS):0;
+      return c.casal&&euAdianto(c)&&pctOutro?[gasto,{...gasto,
+        desc:`A receber · ${c.desc} (${Math.round(pctOutro*100)}%)`,
+        cat:CAT_ACERTO,valor:centavos(e.valor*pctOutro),tipo:"Reembolso",previsaoChave:key+"|receber"}]:[gasto];
+    });
+  });
+}
+
 function dadosProjetados(m,y){
   if(!mesEhProjetado(m,y))return[];
-  const ms=mesStr(m,y);
-  // `mesCaixa` junto: sem ele a linha projetada herdaria o mês de caixa do
-  // lançamento de origem e nunca apareceria no mês para o qual foi projetada.
-  // Para um mês futuro não há vencimento conhecido, então competência e caixa
-  // são o mesmo mês — que é o mês projetado.
-  const base={mes:ms,mesCaixa:ms,ano:y,data:"01/"+ms,projetado:true};
-  // Compromissos fixos: mesma classificação que teriam no mês real, para os
-  // KPIs somarem nos mesmos baldes.
-  // Compromisso que o outro adianta entra como "A pagar", igual aos meses
-  // reais — senão a mesma obrigação muda de nome ao cruzar para o futuro.
-  const fixos=compromissos.map(c=>({...base,
-    desc:euAdianto(c)?c.desc:`${c.desc} (${Math.round(meuRateioAtual()*100)}%)`,
-    cat:euAdianto(c)?c.cat:CAT_ACERTO,
-    valor:compromissoNoPainel(c),
-    // Vinha de `c.cat === "Casa"`, e `Casa` é nome do vocabulário APAGADO em
-    // 20/08 — a comparação nunca dava verdadeiro, então tudo caía em "Fixo". É
-    // o mesmo defeito que o comentário do `casaLiq` descreve mais abaixo,
-    // sobrevivendo aqui. Agora o tipo vem da base, que reproduz o
-    // comportamento atual de propósito: mandar Moradia para "Casa" moveria uns
-    // R$ 4.573/mês entre dois KPIs sem ninguém ter pedido.
-    tipo:c.tipo||"Fixo",
-    cartao:"projetado",parcAtual:1,parcTotal:1,mesFinal:ms}));
-  // Parcelas que ainda não terminaram nesse mês.
-  const parcelas=getParcUnicas().filter(r=>{
-    const[mf,yf]=r.mesFinal.split("/").map(Number);
-    return chaveMes(m,y)<=chaveMes(mf,yf);
-  }).map(r=>{
-    const[mr,yr]=r.mes.split("/").map(Number);
-    const avancou=chaveMes(m,y)-chaveMes(mr,yr);
-    // Quanto o caixa deste cartão se afasta da competência — lido da própria
-    // linha de origem, não recalculado aqui. O Itaú do Lucas vence dia 1 e é
-    // pago com o salário do mês anterior, então o deslocamento é −1; o
-    // Santander vence dia 30 e fica em 0.
-    //
-    // Ler da linha em vez de repetir a tabela de vencimentos no JavaScript:
-    // duas cópias da mesma regra divergem, e aqui a origem já carrega a
-    // resposta.
-    const[mc,yc]=(r.mesCaixa||r.mes).split("/").map(Number);
-    const desloc=chaveMes(mc,yc)-chaveMes(mr,yr);
-    const alvo=chaveMes(m,y)+desloc;
-    return{...r,...base,cartao:r.cartao||"projetado",
-      mesCaixa:mesStr((alvo-1)%12+1,Math.floor((alvo-1)/12)),
-      parcAtual:Math.min(r.parcTotal,r.parcAtual+avancou)};
+  const parcelas=parcelasNoCaixa(m,y);
+  const receber=parcelas.flatMap(r=>{
+    const pct=pctDoOutroNaParcela(r);
+    return pct?[{...r,desc:`A receber · ${r.rotulo||r.desc} (${Math.round(pct*100)}%)`,
+      cat:CAT_ACERTO,valor:centavos(r.valor*pct),tipo:"Reembolso",produto:"sintetico",
+      previsaoChave:r.previsaoChave+"|receber"}]:[];
   });
-  // A parte da Julia nos compromissos do casal, item a item — mesmo tratamento
-  // que os meses reais recebem do exportador, para a categoria "A receber"
-  // abrir e mostrar de onde vem cada pedaço também no futuro.
-  const pctOutro=SPLIT_LUCAS?(perfil==="Lucas"?1-SPLIT_LUCAS:SPLIT_LUCAS):0;
-  // Só quem adianta o dinheiro tem o que receber de volta.
-  const aReceberFixos=pctOutro?compromissos.filter(c=>c.casal&&euAdianto(c)).map(c=>({...base,
-    desc:`A receber · ${c.desc} (${Math.round(pctOutro*100)}%)`,
-    cat:CAT_ACERTO,valor:c.valor*pctOutro,tipo:"Reembolso",
-    cartao:"projetado",parcAtual:1,parcTotal:1,mesFinal:ms})):[];
-  // Compra marcada como `integral` continua devida ao outro enquanto suas
-  // parcelas correm. Sem isto ela aparecia como gasto de quem passou o cartão.
-  const aReceberParcelas=parcelas.map(r=>({r,pct:pctDoOutroNaParcela(r)}))
-    .filter(x=>x.pct>0).map(({r,pct})=>({...r,
-      desc:`A receber · ${r.desc} (${Math.round(pct*100)}%)`,
-      cat:CAT_ACERTO,valor:r.valor*pct,tipo:"Reembolso"}));
-  const aPagarParcelas=parcelasIntegraisDoOutro(m,y).map(r=>({...r,
-    id:"pagar-proj-"+r.id,desc:`A pagar · ${r.desc} (100%)`,
-    cat:CAT_ACERTO,tipo:"Casa",cartao:"projetado",produto:"sintetico",
-    direcao:"Débito",fixo:true}));
-  return[...fixos,...parcelas,...aReceberFixos,...aReceberParcelas,...aPagarParcelas];
+  const outro=outroPerfil();
+  const pagar=parcelasNoCaixa(m,y,outro).flatMap(r=>{
+    const pct=pctDoOutroNaParcela(r,outro);
+    return pct?[{...r,id:"pagar-proj-"+r.id,
+      desc:`A pagar · ${r.rotulo||r.desc} (${Math.round(pct*100)}%)`,
+      cat:CAT_ACERTO,valor:centavos(r.valor*pct),tipo:"Casa",produto:"sintetico",
+      cartao:"projetado",previsaoChave:r.previsaoChave+"|pagar"}]:[];
+  });
+  return [...compromissosNoCaixa(m,y),...parcelas,...receber,...pagar];
 }
 
 function dadosMes(m,y,cartao=""){
   const ms=mesStr(m,y);
-  // Filtrar por banco quer dizer "me mostra a fatura desse banco", e é assim
-  // que a pessoa confere contra o app. Por isso o filtro restringe a CARTÃO:
-  //
-  //   Julia · Itaú       tudo 2.375,58   só cartão 2.033,56  = a fatura
-  //   Julia · Safra      tudo 1.631,60   só cartão 1.466,19  = o app
-  //   Lucas · Santander  tudo 10.480,74  só cartão 9.984,66  = a fatura
-  //
-  // O que fica de fora é movimentação de conta corrente, que não está em
-  // fatura nenhuma e tem lugar próprio na aba Transações. Sem banco escolhido
-  // o mês continua completo — o recorte só existe quando alguém pede um banco.
-  const soDoBanco=r=>!cartao||(r.cartao===cartao&&r.produto==="cartao");
+  const soDoBanco=r=>!cartao||(bancoChave(r.cartao)===bancoChave(cartao)&&r.produto==="cartao");
   const reais=getDisplayData().filter(r=>mesDe(r)===ms&&soDoBanco(r));
+  const acertosReais=new Set(reais.filter(r=>r.cat===CAT_ACERTO).map(r=>r.desc+"|"+r.data));
+  const previstas=dadosProjetados(m,y).filter(r=>soDoBanco(r)&&
+    !(r.cat===CAT_ACERTO&&acertosReais.has(r.desc+"|"+r.data)));
+  return [...reais,...previstas];
+}
 
-  // Projeção do próprio mês E do seguinte. O mês seguinte entra porque cartão
-  // que vence no começo do mês é pago com o salário do mês anterior: a fatura
-  // do Itaú que vence 01/09 sai do bolso em agosto, e as parcelas dela estão
-  // na projeção de setembro.
-  //
-  // Sem isso, agosto mostrava só o punhado de lançamentos que o print da
-  // fatura aberta capturou, contra a fatura inteira que o app do banco exibe —
-  // faltavam as parcelas, que eram três quartos do valor. A fatura que agosto
-  // paga ainda não fechou, então a parte que falta só existe projetada.
-  //
-  // (Sem os números: este arquivo é servido publicamente pelo GitHub Pages, e
-  // saldo em comentário fica no fonte e no histórico do git para sempre.)
-  //
-  // O filtro por `mesDe` é quem evita contar duas vezes: a projeção de setembro
-  // que pertence ao caixa de agosto sai da lista de setembro sozinha.
-  const seg=chaveMes(m,y)+1;
-  const proj=[...dadosProjetados(m,y),
-              ...dadosProjetados((seg-1)%12+1,Math.floor((seg-1)/12))]
-    .filter(r=>mesDe(r)===ms&&soDoBanco(r));
-  // Uma fatura do mês seguinte pode chegar antes de virar o calendário. As
-  // parcelas dela já são reais no caixa deste mês; não somar a projeção da
-  // mesma linha uma segunda vez. O reembolso projetado continua separado.
-  const reaisPorIdMes=new Set(reais.filter(r=>r.id).map(r=>`${r.id}|${r.mes}`));
-  const acertosReais=new Set(reais.filter(r=>r.desc&&r.desc.startsWith("A pagar ·"))
-    .map(r=>`${r.desc}|${r.mes}`));
-  const faltantes=proj.filter(r=>{
-    // O acerto de um mês com lançamentos reais mostra só o que foi registrado.
-    // A parcela do mês seguinte pode cair no mesmo mês de caixa, mas seu
-    // reembolso estimado não é uma nova dívida confirmada pelo casal.
-    if(r.cat===CAT_ACERTO&&!mesEhProjetado(m,y))return false;
-    if(r.desc&&r.desc.startsWith("A pagar ·")&&
-       acertosReais.has(`${r.desc}|${r.mes}`))return false;
-    return r.tipo==="Reembolso"||!r.id||!reaisPorIdMes.has(`${r.id}|${r.mes}`);
-  });
-  return[...reais,...faltantes];
+// Calcula os dois perfis sem alterar a seleção da pessoa no celular.
+function dadosMesDoPerfil(quem,m,y){
+  const anterior={perfil,allData,compromissos};
+  try{perfil=quem;allData=dadosPorPerfil[quem];compromissos=configPorPerfil[quem].compromissos;
+    return dadosMes(m,y);
+  }finally{({perfil,allData,compromissos}=anterior);}
 }
 
 // ── DRILL-DOWN POR CATEGORIA ──────────────────────────────
@@ -1793,7 +1808,6 @@ function nomeNoDetalhe(r,cat){
   return cat===CAT_ACERTO
     ? nome.replace(/^A (receber|pagar) · /i,"")
       .replace(/\s+\(\d+%(?: de R\$ [\d.,]+)?\)$/i,"")
-      .replace(/^MLP\*MAGALU FAS$/i,"Magalu · fogão")
     : nome;
 }
 
@@ -1812,14 +1826,14 @@ function detalheCategoria(txs,cat){
     return`<div class="cat-det-linha${cat===CAT_ACERTO?" acerto":""}">
       <span class="cat-det-data">${esc((r.data||"").slice(0,5))}</span>
       <span class="cat-det-desc" title="${esc(nomeNoDetalhe(r,cat))}">${esc(nomeNoDetalhe(r,cat))}</span>
-      <span class="cat-det-tipo">${esc(cat===CAT_ACERTO?(sinal<0?"a receber de "+outroPerfil():"a pagar a "+outroPerfil()):r.tipo||"")}${cat!==CAT_ACERTO&&r.parcTotal>1?` ${r.parcAtual}/${r.parcTotal}`:""}</span>
+      <span class="cat-det-tipo">${esc(cat===CAT_ACERTO?(sinal<0?"a receber de "+outroPerfil():"a pagar a "+outroPerfil()):r.tipo||"")}${cat!==CAT_ACERTO&&r.parcTotal>1?` ${r.parcAtual}/${r.parcTotal}`:""}${r.projetado?" · previsão":""}</span>
       <span class="cat-det-val"${cor?` style="color:${cor}"`:""}>${valor}</span>
     </div>`;
   }).join("");
   const soma=itens.reduce((s,{r,sinal})=>s+r.valor*sinal,0);
   // Sinal do ponto de vista do perfil: receber soma, pagar subtrai.
   const saldoUsuario=-soma+(perfil==="Lucas"?-totalPrevisto:totalPrevisto);
-  const prefixo=previstas.length?"saldo parcial previsto ":"saldo ";
+  const prefixo=previstas.length||itens.some(x=>x.r.projetado)?"saldo parcial previsto ":"saldo ";
   const totalNome=cat===CAT_ACERTO
     ? prefixo+(saldoUsuario>.005?`a receber de ${esc(outroPerfil())}`
       : saldoUsuario<-.005?`a pagar a ${esc(outroPerfil())}`:"zerado")
@@ -1901,9 +1915,9 @@ function renderizarMes(){
     !descsReemb.some(d=>d.includes(k))
   );
   let avisos="";
-  if(mesEhProjetado(mesAtual.m,mesAtual.y)){
+  if(txs.some(r=>r.projetado)){
     const nFix=compromissos.length;
-    avisos+=`<div class="reemb-alert" style="background:rgba(122,162,247,0.08);border-color:rgba(122,162,247,0.3)"><span class="reemb-alert-icon">🔮</span><div class="reemb-alert-text" style="color:var(--blue)"><strong>Mês projetado:</strong> ainda não aconteceu. Mostra ${nFix} compromisso${nFix===1?"":"s"} fixo${nFix===1?"":"s"} da aba Config mais as parcelas que ainda correm neste mês. Gasto variável não entra — ele não dá para prever lançamento a lançamento.</div></div>`;
+    avisos+=`<div class="reemb-alert" style="background:rgba(122,162,247,0.08);border-color:rgba(122,162,247,0.3)"><span class="reemb-alert-icon">🔮</span><div class="reemb-alert-text" style="color:var(--blue)"><strong>${txs.some(r=>!r.projetado)?"Mês parcial com previsões":"Mês previsto"}:</strong> obrigações e parcelas sem confirmação aparecem como previsão. Compromissos vêm da configuração; mobilidade usa o restante da média após abater os gastos observados. Valores previstos não comprovam pagamento nem recebimento.</div></div>`;
   }
   if(parcial){
     // O aviso NOMEIA os cartões em aberto. A frase antiga era fixa e
@@ -2029,11 +2043,12 @@ function renderizarMes(){
       // prometer líquido: quem fecha a conta ali é o rodapé do detalhe.
       const previstas=parcelasPrevistasDoAcerto(cat);
       const valorPrevisto=previstas.reduce((s,r)=>s+r.valor,0);
+      const origemAcerto=txs.some(r=>r.cat===CAT_ACERTO&&r.projetado)?"saldo estimado":"valor registrado";
       const notaBase=!isLiq()
-        ? `valor registrado; abra para ver os lançamentos`
+        ? `${origemAcerto}; abra para ver os lançamentos`
         : recebe
-          ? `valor registrado a receber de ${outroPerfil()}`
-          : `valor registrado a pagar a ${outroPerfil()}`;
+          ? `${origemAcerto} a receber de ${outroPerfil()}`
+          : `${origemAcerto} a pagar a ${outroPerfil()}`;
       const notaPrevista=previstas.length
         ? ` · ${fmtCentavos(valorPrevisto)} ${perfil==="Lucas"?"a pagar a Julia":"a receber de Lucas"} em parcelas antigas previstas; abra para ver`
         : "";
@@ -2097,7 +2112,8 @@ function renderizarMes(){
   const ultimos=[...txs].filter(r=>r.data)
     .sort((a,b)=>chaveData(b.data)-chaveData(a.data)).slice(0,12);
   document.getElementById("ultimos-lanc").innerHTML=ultimos.length?ultimos.map(r=>{
-    const meta=[r.cartao,r.produto==="cartao"?"cartão":r.produto].filter(Boolean).join(" · ");
+    const meta=r.projetado?"previsão · ainda sem confirmação":
+      [r.cartao,r.produto==="cartao"?"cartão":r.produto].filter(Boolean).join(" · ");
     const credito=r.tipo==="Reembolso";
     return`<div class="ult-linha">
       <div class="ult-data">${esc(r.data)}</div>
@@ -3298,39 +3314,21 @@ function projecaoDoMes(i,parcUnicas){
   while(m>12){m-=12;y++;}
   const str=mesStr(m,y);
 
-  // Compromissos declarados na Config. O A pagar de parcelas integrais
-  // entra no mesmo balde Casa do espelho SQL dos meses reais.
-  const aPagarParcelas=parcelasIntegraisDoOutro(m,y)
-    .reduce((s,r)=>s+r.valor,0);
-  const totalCasa=compromissos.filter(c=>c.cat==="Casa")
-    .reduce((s,c)=>s+compromissoNoPainel(c),0)+aPagarParcelas;
-  const totalFixoP=compromissos.filter(c=>c.cat!=="Casa")
-    .reduce((s,c)=>s+compromissoNoPainel(c),0);
-  const totalCompartilhado=compromissos.filter(c=>c.casal)
-    .reduce((s,c)=>s+compromissoNoPainel(c),0);
-  // O que sobra para quem está sendo visto: o que é dele inteiro, mais o
-  // rateio do que é do casal.
-  const meuRateio=meuRateioAtual();
-  const suaParteFixos=compromissos.reduce((s,c)=>s+compromissoMeu(c),0);
-
-  const parcelas=parcUnicas.filter(r=>{
-    const[mf,yf]=r.mesFinal.split("/").map(Number);
-    return(y*12+m)<=(yf*12+mf);
-  });
+  const txs=dadosMes(m,y);
+  const parcelas=txs.filter(r=>r.tipo==="Parcela");
   const totalParc=parcelas.reduce((s,r)=>s+r.valor,0);
-  const totalParcProprio=parcelas.reduce((s,r)=>s+r.valor*(1-pctDoOutroNaParcela(r)),0);
-
-  // Parcelas que TERMINAM exatamente nesse mês — é o que libera orçamento.
+  const totalCasa=txs.filter(r=>r.tipo==="Casa").reduce((s,r)=>s+r.valor,0);
+  const totalFixoP=txs.filter(r=>!["Parcela","Casa","Reembolso"].includes(r.tipo)).reduce((s,r)=>s+r.valor,0);
+  const total=totalCasa+totalFixoP+totalParc;
+  const suaParte=total-txs.filter(r=>r.tipo==="Reembolso").reduce((s,r)=>s+r.valor,0);
   const terminamMap={};
-  parcUnicas.filter(r=>r.mesFinal===str).forEach(r=>{
-    const d=applyOverride(r);
-    terminamMap[d.desc]=(terminamMap[d.desc]||0)+r.valor;
-  });
+  for(const r of parcelas){
+    const finalCaixa=ordemMes(r.mesFinal)+ordemMes(mesDe(r))-ordemMes(r.mes);
+    if(finalCaixa===chaveMes(m,y))terminamMap[r.rotulo||r.desc]=(terminamMap[r.rotulo||r.desc]||0)+r.valor;
+  }
   const valorLiberado=Object.values(terminamMap).reduce((s,v)=>s+v,0);
-
-  return{m,y,str,totalCasa,totalFixoP,totalParc,parcelas,terminamMap,valorLiberado,
-    totalCompartilhado,meuRateio,total:totalCasa+totalFixoP+totalParc,
-    suaParte:suaParteFixos+totalParcProprio+aPagarParcelas};
+  return {m,y,str,totalCasa,totalFixoP,totalParc,parcelas,terminamMap,valorLiberado,
+    totalCompartilhado:0,meuRateio:meuRateioAtual(),total,suaParte};
 }
 
 function renderizarProjecao(){
@@ -3340,6 +3338,7 @@ function renderizarProjecao(){
     const{m,y,str,totalCasa,totalFixoP,totalParc,parcelas,terminamMap,
       valorLiberado,total,suaParte,meuRateio}=projecaoDoMes(i,parcUnicas);
     const totalBruto=total,casaLiq=totalCasa,totalAssin=0;
+    const totalExibido=isLiq()?suaParte:total;
 
     // Barras empilhadas — % do total
     const segCasa=total>0?totalCasa/total*100:0;
@@ -3362,7 +3361,7 @@ function renderizarProjecao(){
       <div class="proj-month">${labelMes(m,y).toUpperCase()}</div>
       <div class="proj-totals">
         ${!isLiq()?"":`<div class="proj-total-bruto">${fmt(totalBruto)} bruto</div>`}
-        <div class="proj-total-liq ${total<RENDA_PISO?'ok':''}">${fmt(total)}</div>
+        <div class="proj-total-liq ${total<RENDA_PISO?'ok':''}">${fmt(totalExibido)}</div>
       </div>
       <div class="stack-bars">
         <div class="stack-seg" style="width:${segCasa}%;background:var(--blue)"></div>
@@ -3393,7 +3392,7 @@ function renderizarProjecao(){
 // selecionado. Meses parciais são marcados por pessoa, porque a cobertura das
 // fontes difere — o Safra da Julia só começa em 19/05/2026.
 function resumoPessoa(dados,m,y){
-  const txs=dados.filter(r=>r.mes===mesStr(m,y));
+  const txs=dados.filter(r=>mesDe(r)===mesStr(m,y));
   const total=txs.filter(r=>r.tipo!=="Reembolso").reduce((s,r)=>s+r.valor,0);
   const reemb=txs.filter(r=>r.tipo==="Reembolso").reduce((s,r)=>s+r.valor,0);
   return{total,reemb,liquido:total-reemb,n:txs.length};
@@ -3413,16 +3412,18 @@ function cardPessoa(res,parcial){
 // entre Lucas e Julia e, portanto, não podem reduzir nem aumentar o líquido.
 function aReceberDoCasal(dados,m,y){
   const ms=mesStr(m,y);
-  return dados.filter(r=>r.mes===ms&&r.tipo==="Reembolso"&&
+  return dados.filter(r=>mesDe(r)===ms&&r.tipo==="Reembolso"&&
     /^a receber\b/i.test(String(r.desc||"").trim()))
     .reduce((s,r)=>s+r.valor,0);
 }
 
-function cardAcertoCasal(lucasRecebe,juliaRecebe,ms,parcialL,parcialJ,semJuliaNoMes,parcelasPrevistas=[]){
+function cardAcertoCasal(lucasRecebe,juliaRecebe,ms,parcialL,parcialJ,semJuliaNoMes,parcelasPrevistas=[],temPrevisao=false){
   const juliaPrevisto=parcelasPrevistas.reduce((s,r)=>s+r.valor,0);
   const saldo=lucasRecebe-juliaRecebe-juliaPrevisto;
-  const parcial=parcialL||parcialJ||semJuliaNoMes||juliaPrevisto>0;
-  const aviso=juliaPrevisto>0
+  const parcial=parcialL||parcialJ||semJuliaNoMes||juliaPrevisto>0||temPrevisao;
+  const aviso=temPrevisao
+    ? "Inclui obrigações e parcelas previstas, ainda sem confirmação. O acerto é estimado; não comprova pagamento ou reembolso recebido."
+    : juliaPrevisto>0
     ? "As parcelas antigas do cartão da Julia foram abatidas como previsão; a fatura ainda precisa confirmar os valores."
     : semJuliaNoMes
       ? "Não há gastos da Julia registrados em "+ms+"; nenhum valor que Lucas deva a ela foi descontado."
@@ -3440,8 +3441,8 @@ function cardAcertoCasal(lucasRecebe,juliaRecebe,ms,parcialL,parcialJ,semJuliaNo
     <div class="casal-total-sub">${aviso}</div>
     ${detalheParcelas}
     <div class="casal-acerto-grid">
-      <div class="casal-acerto-item"><div class="casal-acerto-label">Julia deve ao Lucas</div><div class="casal-acerto-valor" style="color:var(--accent2)">${fmtCentavos(lucasRecebe)}</div><div class="casal-acerto-direcao">itens “A receber” de gastos pagos por ele</div></div>
-      <div class="casal-acerto-item"><div class="casal-acerto-label">Lucas deve à Julia</div><div class="casal-acerto-valor" style="color:var(--amber)">${fmtCentavos(juliaRecebe+juliaPrevisto)}</div><div class="casal-acerto-direcao">${juliaPrevisto>0?fmtCentavos(juliaRecebe)+" lançado + "+fmtCentavos(juliaPrevisto)+" previsto":"itens “A receber” de gastos pagos por ela"}</div></div>
+      <div class="casal-acerto-item"><div class="casal-acerto-label">Julia deve ao Lucas</div><div class="casal-acerto-valor" style="color:var(--accent2)">${fmtCentavos(lucasRecebe)}</div><div class="casal-acerto-direcao">itens “A receber”${temPrevisao?" · inclui previsões":" de gastos registrados por ele"}</div></div>
+      <div class="casal-acerto-item"><div class="casal-acerto-label">Lucas deve à Julia</div><div class="casal-acerto-valor" style="color:var(--amber)">${fmtCentavos(juliaRecebe+juliaPrevisto)}</div><div class="casal-acerto-direcao">${juliaPrevisto>0?fmtCentavos(juliaRecebe)+" lançado + "+fmtCentavos(juliaPrevisto)+" previsto":"itens “A receber”"+(temPrevisao?" · inclui previsões":" de gastos registrados por ela")}</div></div>
       <div class="casal-acerto-item"><div class="casal-acerto-label">saldo ${parcial?"parcial":"líquido"}</div><div class="casal-acerto-valor" style="color:${cor}">${fmtCentavos(saldo)}</div><div class="casal-acerto-direcao">${direcao}${parcial?" · provisório":""} · estornos bancários ficam fora</div></div>
     </div>
   </div>`;
@@ -3451,29 +3452,32 @@ function renderizarCasal(){
   const ms=mesStr(mesAtual.m,mesAtual.y);
   // Esta aba não segue o perfil ativo: ela existe para comparar os dois lados,
   // então lê sempre Lucas de um lado e Julia do outro.
-  const lucas=resumoPessoa(dadosPorPerfil.Lucas,mesAtual.m,mesAtual.y);
-  const julia=resumoPessoa(dadosPorPerfil.Julia,mesAtual.m,mesAtual.y);
+  const linhasL=dadosMesDoPerfil("Lucas",mesAtual.m,mesAtual.y);
+  const linhasJ=dadosMesDoPerfil("Julia",mesAtual.m,mesAtual.y);
+  const lucas=resumoPessoa(linhasL,mesAtual.m,mesAtual.y);
+  const julia=resumoPessoa(linhasJ,mesAtual.m,mesAtual.y);
+  const previstoL=linhasL.some(r=>r.projetado),previstoJ=linhasJ.some(r=>r.projetado);
   const parcialL=mesEhParcial("Lucas",ms);
   const parcialJ=mesEhParcial("Julia",ms);
 
   const elL=document.getElementById("casal-lucas-content");
-  elL.innerHTML=cardPessoa(lucas,parcialL);
+  elL.innerHTML=cardPessoa(lucas,parcialL||previstoL);
   elL.className="";
 
   const elJ=document.getElementById("casal-julia-content");
   elJ.className="";
   elJ.innerHTML=dadosPorPerfil.Julia.length
-    ? cardPessoa(julia,parcialJ)
+    ? cardPessoa(julia,parcialJ||previstoJ)
     : `<div class="coming-soon"><span>sem dados</span><span style="font-size:11px">aba "Transações Julia" vazia ou sem acesso</span></div>`;
 
-  const lucasRecebe=aReceberDoCasal(dadosPorPerfil.Lucas,mesAtual.m,mesAtual.y);
-  const juliaRecebe=aReceberDoCasal(dadosPorPerfil.Julia,mesAtual.m,mesAtual.y);
+  const lucasRecebe=aReceberDoCasal(linhasL,mesAtual.m,mesAtual.y);
+  const juliaRecebe=aReceberDoCasal(linhasJ,mesAtual.m,mesAtual.y);
   const semJuliaNoMes=!dadosPorPerfil.Julia.some(r=>
     r.mes===ms&&(r.produto==="conta"||r.produto==="cartao"));
-  const parcelasPrevistas=parcelasAntigasJuliaPendentes(mesAtual.m,mesAtual.y);
+  const parcelasPrevistas=previstoL||previstoJ?[]:parcelasAntigasJuliaPendentes(mesAtual.m,mesAtual.y);
   const elA=document.getElementById("casal-acerto");
   elA.innerHTML=cardAcertoCasal(lucasRecebe,juliaRecebe,ms,parcialL,parcialJ,
-    semJuliaNoMes,parcelasPrevistas);
+    semJuliaNoMes,parcelasPrevistas,previstoL||previstoJ);
 
   const elT=document.getElementById("casal-total");
   const temJulia=dadosPorPerfil.Julia.length;
