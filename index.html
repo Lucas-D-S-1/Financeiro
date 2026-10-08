@@ -501,6 +501,92 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
   .modal-btns{flex-direction:column-reverse;}
   .modal-btns button{width:100%;padding:11px 0;}
 }
+
+/* ── EXTRATO DIÁRIO ──────────────────────────────────────
+   Análise validada fora do ledger, lida da Edge Function só depois do login.
+   Texto em 14px+ e alvos de 44px no celular: é uma aba de leitura diária,
+   feita para o telefone, não um quadro de controle. */
+.ext-cab{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 16px;margin-bottom:12px;}
+.ext-meta{font-family:var(--mono);font-size:12px;color:var(--muted);}
+.ext-meses{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.ext-meses .filter-btn{font-size:13px;min-width:52px;}
+.ext-meses .filter-btn[aria-pressed="true"]{background:rgba(200,240,74,0.1);border-color:var(--accent);color:var(--accent);}
+.ext-cobertura{font-size:14px;line-height:1.5;color:var(--muted);margin-bottom:10px;}
+.ext-cobertura strong{color:var(--text);font-weight:500;}
+.ext-legenda{display:flex;flex-wrap:wrap;gap:4px 18px;margin-bottom:8px;}
+.ext-legenda button{background:none;border:none;color:var(--text);font-family:var(--sans);font-size:14px;text-align:left;
+  display:inline-flex;align-items:flex-start;gap:8px;padding:4px 0;cursor:pointer;}
+.ext-legenda button[aria-pressed="false"]{opacity:0.45;}
+.ext-legenda small{display:block;color:var(--muted);font-size:12px;font-family:var(--mono);}
+.ext-sw{flex:0 0 auto;width:16px;height:3px;border-radius:2px;margin-top:9px;}
+.ext-sw.c1,.ext-c1{background:var(--accent);}
+.ext-sw.c2,.ext-c2{background:var(--blue);}
+.ext-estilos{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:6px;}
+.ext-estilos i{display:inline-block;width:18px;height:0;border-top:2px solid var(--muted);vertical-align:middle;margin:0 5px 0 0;}
+.ext-estilos i.tracejado{border-top-style:dashed;margin-left:10px;}
+.ext-grafico{position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:8px 6px 4px;}
+.ext-grafico svg{display:block;width:100%;height:auto;touch-action:pan-y;}
+.ext-grafico text{fill:var(--muted);font-family:var(--mono);font-size:12px;}
+.ext-grafico .grade{stroke:var(--border);stroke-width:1;}
+.ext-grafico .moldura{fill:none;stroke:var(--border2);stroke-width:1;}
+.ext-grafico .linha{fill:none;stroke-width:2;}
+.ext-grafico .s1{stroke:var(--accent);}
+.ext-grafico .s2{stroke:var(--blue);}
+.ext-grafico .prev{stroke-dasharray:5 4;}
+.ext-grafico .guia{stroke:var(--muted);stroke-width:1;}
+.ext-grafico .m1{fill:var(--accent);} .ext-grafico .m2{fill:var(--blue);}
+.ext-grafico .alvo{fill:transparent;cursor:crosshair;}
+.ext-grafico .vazio{fill:var(--muted);font-size:13px;}
+.ext-dica{position:absolute;pointer-events:none;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;
+  padding:7px 9px;font-size:14px;line-height:1.45;color:var(--text);max-width:min(260px,80%);box-shadow:0 8px 24px rgba(0,0,0,0.45);z-index:3;}
+.ext-dica[hidden]{display:none;}
+.ext-dica .lin{display:flex;gap:6px;align-items:baseline;}
+.ext-dica .ext-sw{margin-top:0;transform:translateY(-3px);}
+.ext-detalhe{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin:12px 0;font-size:14px;line-height:1.5;}
+.ext-detalhe .tit{font-family:var(--mono);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;}
+.ext-detalhe .vals{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:4px 16px;}
+.ext-detalhe ul{margin:8px 0 0 18px;font-size:14px;color:var(--muted);}
+.ext-dias{display:flex;flex-direction:column;gap:6px;}
+.ext-dia{width:100%;display:grid;grid-template-columns:72px repeat(2,minmax(0,1fr)) 92px;gap:4px 12px;align-items:baseline;
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;color:var(--text);
+  font-family:var(--sans);font-size:14px;text-align:left;cursor:pointer;}
+.ext-dia[aria-pressed="true"]{border-color:var(--accent);}
+.ext-dia .data{font-family:var(--mono);color:var(--text);}
+.ext-dia .num{font-family:var(--mono);}
+.ext-dia .num small{display:block;color:var(--muted);font-size:12px;}
+.ext-dia .st{font-family:var(--mono);font-size:12px;color:var(--muted);text-align:right;}
+.ext-dia .st.prev{color:var(--amber);}
+.ext-dia ul{grid-column:1 / -1;margin:4px 0 0 18px;font-size:14px;color:var(--muted);line-height:1.45;}
+.ext-dias-cab{display:grid;grid-template-columns:72px repeat(2,minmax(0,1fr)) 92px;gap:12px;padding:0 13px 4px;
+  font-family:var(--mono);font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);}
+.ext-dias-cab span:last-child{text-align:right;}
+.ext-comp{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:16px;}
+.ext-comp label{display:block;font-size:14px;color:var(--muted);margin:10px 0 4px;}
+.ext-comp select,.ext-comp input{width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);
+  border-radius:8px;padding:9px 10px;font-family:var(--sans);font-size:14px;}
+.ext-comp input:disabled{opacity:0.5;}
+.ext-campos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 14px;}
+.ext-fatos{display:flex;flex-wrap:wrap;gap:4px 18px;margin-top:10px;font-size:14px;}
+.ext-fatos span{color:var(--muted);} .ext-fatos b{color:var(--text);font-weight:500;}
+.ext-saida{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 16px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);}
+.ext-saida div{display:flex;flex-direction:column;font-size:15px;font-family:var(--mono);}
+.ext-saida span{font-family:var(--sans);font-size:12px;color:var(--muted);margin-bottom:2px;}
+.ext-regra{font-size:14px;color:var(--muted);margin-top:12px;line-height:1.5;}
+.ext-regra a{color:var(--accent2);}
+.ext-estado{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:200px;
+  color:var(--muted);font-size:14px;text-align:center;border:1px dashed var(--border2);border-radius:var(--r);padding:20px;}
+@media(max-width:640px){
+  .ext-dia,.ext-dias-cab{grid-template-columns:52px repeat(2,minmax(0,1fr));}
+  .ext-dia .st{grid-column:1 / -1;text-align:left;}
+  .ext-dias-cab span:last-child{display:none;}
+  .ext-campos{grid-template-columns:1fr;}
+  .ext-comp select,.ext-comp input{font-size:16px;min-height:44px;}
+  .ext-meses .filter-btn,.ext-legenda button,#tab-extrato .action-btn{min-height:44px;}
+}
+@media(pointer:coarse){
+  .ext-meses .filter-btn,.ext-legenda button,#tab-extrato .action-btn{min-height:44px;}
+  .ext-comp select,.ext-comp input{font-size:16px;min-height:44px;}
+}
 </style>
 </head>
 <body>
@@ -568,6 +654,7 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
     <button type="button" class="tab" role="tab" aria-selected="false" onclick="setTab('transacoes',this)">transações</button>
     <button type="button" class="tab" role="tab" aria-selected="false" onclick="setTab('historico',this)">histórico</button>
     <button type="button" class="tab" role="tab" aria-selected="false" onclick="setTab('planejamento',this)">planejamento</button>
+    <button type="button" class="tab" role="tab" aria-selected="false" onclick="setTab('extrato',this)">extrato diário</button>
     <button type="button" class="tab" role="tab" aria-selected="false" onclick="setTab('investimentos',this)">investimentos</button>
   </div>
 
@@ -676,6 +763,16 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
         Não inclui compras novas nem reajustes. Abra um mês para conferir as categorias e os lançamentos.</div>
       <div id="proj-loading" class="coming-soon">carregando planejamento…</div>
       <div id="proj-content" style="display:none"><div id="proj-grid" class="proj-grid"></div></div>
+    </div>
+
+    <!-- EXTRATO DIÁRIO: análise validada fora do ledger. Nenhum valor mora
+         aqui: o conteúdo chega da Edge Function, depois do login. -->
+    <div id="tab-extrato" class="tab-content">
+      <div class="ext-cab">
+        <span class="section-title">extrato diário</span>
+        <span class="ext-meta" id="ext-meta" aria-live="polite"></span>
+      </div>
+      <div id="ext-corpo"></div>
     </div>
 
     <!-- Fila de revisão: o que o bot propôs e ainda ninguém confirmou. -->
@@ -997,6 +1094,9 @@ function mostrarEntrando(){
   document.getElementById("login-entrando").style.display="block";
 }
 function mostrarTelaDeEntrada(){
+  // Sem sessão, nada da análise pessoal fica em memória para a próxima conta.
+  limparExtrato();
+  limparSimulacaoExtrato();
   document.getElementById("app").style.display="none";
   document.getElementById("login-screen").style.display="flex";
   document.getElementById("login-entrando").style.display="none";
@@ -1021,6 +1121,9 @@ function lerPayloadJwt(token){
 
 async function receberCredencialGoogle(r){
   if(!r||!r.credential){mostrarTelaDeEntrada();mostrarFalhaDeAutorizacao({error:"sem_credencial"});return;}
+  // Uma credencial nova começa outra sessão da análise, inclusive quando o
+  // perfil é o mesmo. Respostas do token anterior não podem repor o cache.
+  limparExtrato();
   mostrarEntrando();
   idToken=r.credential;
   const u=lerPayloadJwt(idToken);
@@ -1096,7 +1199,6 @@ function mostrarFalhaDeCarga(erro,email){
 async function logout(){
   // O ID token nao e refresh token e nao fica guardado. `disableAutoSelect`
   // impede sair e entrar automaticamente na mesma conta em seguida.
-  try{await carregarGIS();google.accounts.id.disableAutoSelect();}catch{}
   idToken=null;tokenExpiraEm=0;emailConectado="";allData=[];movimentos=[];
   // A fila de pendências fica: se alguém sair antes de a rede voltar, a
   // correção ainda sobe no próximo login em vez de se perder.
@@ -1104,6 +1206,9 @@ async function logout(){
   dadosPorPerfil.Lucas=[];dadosPorPerfil.Julia=[];
   movimentosPorPerfil.Lucas=[];movimentosPorPerfil.Julia=[];
   mostrarTelaDeEntrada();
+  // A limpeza e a tela de entrada são síncronas. A rede do GIS pode demorar
+  // ou uma credencial nova chegar enquanto aguardamos: não limpar depois.
+  try{await carregarGIS();google.accounts.id.disableAutoSelect();}catch{}
 }
 
 function erroDaApi(r,corpo){
@@ -1114,6 +1219,7 @@ function erroDaApi(r,corpo){
     // recarrega a base e chama sincronizarOverrides(), portanto nada precisa
     // ser repetido na mao depois de uma aba aberta por muito tempo.
     idToken=null;
+    limparExtrato();
     setTimeout(()=>iniciarAutenticacao(),0);
   }
   return erro;
@@ -1429,6 +1535,8 @@ function aplicarPerfil(){
   catsAbertas.clear();
   posicionarMesInicial();
   renderAll();
+  // A aba do extrato é do perfil visto: troca junto, sem herdar dia fixado.
+  if(extratoAbaAtiva())abrirExtrato();
 }
 
 function trocarPerfil(novo){
@@ -1967,6 +2075,9 @@ async function atualizarDados(){
   if(botao.disabled)return;
   const contexto={perfil,mes:{...mesAtual},categorias:[...catsAbertas]};
   botao.disabled=true;
+  // "Atualizar" relê também o extrato, se a aba estiver aberta (aplicarPerfil
+  // abaixo dispara a nova leitura); fora dela, a próxima abertura relê.
+  limparExtrato();
   try{
     await carregarTudo();
     perfil=contexto.perfil;aplicarPerfil();mesAtual=contexto.mes;
@@ -3629,6 +3740,463 @@ function irParaTransacoes(){
   if(aba)setTab("transacoes",aba);
 }
 
+// ── EXTRATO DIÁRIO ────────────────────────────────────────
+//
+// Uma análise já validada FORA do ledger: despesa bruta pela data de origem
+// disponível × saídas de caixa próprio, julho a dezembro de 2026, com o que é
+// observado, previsto, reserva sem data e caso a classificar. Ela não é fonte
+// oficial de transações e esta aba não recalcula nada: desenha o que a análise
+// diz e mostra de quando ela é.
+//
+// O conteúdo é pessoal e o site é público. Ele só existe aqui depois do login,
+// lido da Edge Function (`/painel/extrato-diario`), e só para o perfil pedido.
+// Perfil sem análise mostra que não há análise, nunca a do outro.
+//
+// UMA REGRA PARA O ACUMULADO
+//
+// A curva é em degraus: o acumulado de um dia vale do começo daquele dia até o
+// começo do seguinte. Tooltip, marcador, detalhe e lista leem o mesmo
+// `extratoNoDia()`, então os números de um dia são os mesmos em todo lugar —
+// a primeira versão interpolava a linha, e o tooltip mostrava um acumulado
+// diferente do detalhe do mesmo dia.
+const EXTRATO_API=PAINEL_API+"/extrato-diario";
+const EXTRATO_MESES_ROTULO={"01":"jan","02":"fev","03":"mar","04":"abr","05":"mai","06":"jun",
+  "07":"jul","08":"ago","09":"set","10":"out","11":"nov","12":"dez"};
+const EXTRATO_REGRA_URL=/^https:\/\/www\.santander\.com\.br\/[\w\-./]*$/;
+const extrato={cache:{},seq:{},sessao:0,requests:{},fixo:null,obs:null};
+
+const brl2=v=>v==null||!isFinite(v)?"—":(v<0?"−":"")+"R$ "+Math.abs(v).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const pct2=v=>v==null||!isFinite(v)?"—":v.toLocaleString("pt-BR",{maximumFractionDigits:2})+"%";
+
+// A aba ativa é estado do painel, não leitura do DOM: setTab() é o único que a muda.
+let abaAtual="mes";
+function extratoAbaAtiva(){return abaAtual==="extrato";}
+function extratoChave(p){return "extratoDiario:"+p;}
+function extratoLer(p){
+  try{const s=JSON.parse(localStorage.getItem(extratoChave(p))||"null");return s&&typeof s==="object"&&!Array.isArray(s)?s:{};}
+  catch{return{};}
+}
+function extratoGuardar(p,patch){
+  try{localStorage.setItem(extratoChave(p),JSON.stringify({...extratoLer(p),...patch}));}catch{}
+}
+function limparExtrato(){
+  extrato.sessao++;
+  const anteriores=extrato.requests;
+  extrato.requests={};extrato.cache={};extrato.fixo=null;
+  Object.values(anteriores).forEach(r=>r.controller?.abort());
+  if(extrato.obs){extrato.obs.disconnect();extrato.obs=null;}
+  const corpo=document.getElementById("ext-corpo"),meta=document.getElementById("ext-meta");
+  if(corpo)corpo.innerHTML="";
+  if(meta)meta.textContent="";
+}
+function limparSimulacaoExtrato(){
+  // A origem do Pages é compartilhada. Só preferências de exibição ficam
+  // entre sessões; pontos/valor/benefício digitados não ficam na saída.
+  Object.keys(PERFIS).forEach(p=>{
+    const chave=extratoChave(p);
+    try{
+      const texto=localStorage.getItem(chave);
+      if(!texto)return;
+      const salvo=JSON.parse(texto);
+      if(!salvo||typeof salvo!=="object"||Array.isArray(salvo)){
+        localStorage.removeItem(chave);return;
+      }
+      delete salvo.sim;
+      localStorage.setItem(chave,JSON.stringify(salvo));
+    }catch{try{localStorage.removeItem(chave);}catch{}}
+  });
+}
+
+// Número digitado como se escreve no Brasil: "1.234,5", "2,5", "1000".
+// Vazio é "não informado" (null), e não zero.
+function numeroDigitado(t){
+  const s=String(t??"").trim().replace(/\s/g,"");
+  if(!s)return null;
+  // Vírgula é decimal; ponto seguido de grupos de três dígitos é milhar ("1.500").
+  const milhar=/^\d{1,3}(\.\d{3})+$/.test(s);
+  const n=Number(s.includes(",")||milhar?s.replace(/\./g,"").replace(",","."):s);
+  return isFinite(n)&&n>=0?n:NaN;
+}
+
+// O formato que a aba desenha. Conteúdo fora dele vira erro explicado, não
+// tela quebrada.
+function extratoValido(d){
+  if(!d||typeof d!=="object"||!Array.isArray(d.months)||!d.months.length)return false;
+  if(!Array.isArray(d.series)||d.series.map(s=>s&&s.key).join()!=="competencia,caixa")return false;
+  return d.months.every(m=>/^\d{4}-\d{2}$/.test(String(m.key))&&Array.isArray(m.days)&&m.days.length&&
+    m.days.every((x,i)=>x&&x.d===i+1));
+}
+
+async function buscarExtrato(p,signal,atual){
+  if(window.__HARNESS_EXTRATO__){
+    const h=window.__HARNESS_EXTRATO__;
+    const v=typeof h==="function"?await h(p):h[p];
+    if(v instanceof Error)throw v;
+    return v||{perfil:p,analise:"extrato_diario",disponivel:false};
+  }
+  const r=await fetch(EXTRATO_API+"?perfil="+encodeURIComponent(p),{headers:{Authorization:"Bearer "+idToken},signal});
+  const corpo=await r.json().catch(()=>({}));
+  // O body pode terminar depois de um abort, refresh ou novo login. A guarda
+  // precisa vir ANTES de erroDaApi: um 401 antigo não pode revogar o token da
+  // sessão nova. O caller também protege o cache/render e o finally.
+  if(signal?.aborted||!atual()){
+    const erro=new Error("resposta de uma requisição substituída");
+    erro.name="AbortError";throw erro;
+  }
+  if(!r.ok){const e=erroDaApi(r,corpo);e.message=corpo.detalhe||e.message;throw e;}
+  return corpo;
+}
+
+async function carregarExtrato(p,forcar=false){
+  if(!forcar){
+    if(extrato.requests[p]){
+      if(p===perfil)renderExtrato();
+      return extrato.requests[p].promise;
+    }
+    if(["ok","vazio"].includes(extrato.cache[p]?.estado)){
+      if(p===perfil)renderExtrato();
+      return;
+    }
+  }
+  const anterior=extrato.requests[p];
+  const req={sessao:extrato.sessao,seq:(extrato.seq[p]||0)+1,token:idToken,
+    controller:typeof AbortController==="function"?new AbortController():null,promise:null};
+  extrato.seq[p]=req.seq;extrato.requests[p]=req;
+  anterior?.controller?.abort();
+  extrato.cache[p]={estado:"carregando"};
+  if(p===perfil)renderExtrato();
+  const atual=()=>extrato.sessao===req.sessao&&extrato.requests[p]===req&&
+    extrato.seq[p]===req.seq&&idToken===req.token;
+  req.promise=(async()=>{
+    try{
+      const env=await buscarExtrato(p,req.controller?.signal,atual);
+      if(!atual())return;
+      if(!env||env.perfil!==p)throw new Error("a resposta não é do perfil pedido");
+      extrato.cache[p]=env.disponivel
+        ?(extratoValido(env.dados)?{estado:"ok",env}:{estado:"erro",erro:new Error("formato da análise não reconhecido")})
+        :{estado:"vazio",env};
+    }catch(erro){if(atual())extrato.cache[p]={estado:"erro",erro};}
+    finally{
+      // Só esta requisição pode liberar seu perfil. Outra carga ou sessão
+      // já pode estar usando o mesmo espaço enquanto a resposta chega.
+      if(atual()){
+        delete extrato.requests[p];
+        if(p===perfil)renderExtrato();
+      }
+    }
+  })();
+  return req.promise;
+}
+
+function abrirExtrato(){
+  extrato.fixo=null;
+  return carregarExtrato(perfil);
+}
+
+function extratoMesAtual(d){
+  const salvo=extratoLer(perfil).mes;
+  return d.months.find(m=>m.key===salvo)||d.months.find(m=>m.key===d.default_month)||d.months[0];
+}
+
+// O único lugar que diz quanto vale um dia. Tudo o mais lê daqui.
+function extratoNoDia(m,serie,dia){
+  const d=m.days[dia-1],c=d&&d[serie];
+  return c?{v:c.v,cum:c.cum,est:!!c.est}:null;
+}
+
+function renderExtrato(){
+  if(!extratoAbaAtiva())return;
+  const corpo=document.getElementById("ext-corpo"),meta=document.getElementById("ext-meta");
+  const c=extrato.cache[perfil];
+  if(extrato.obs){extrato.obs.disconnect();extrato.obs=null;}
+  if(!c||c.estado==="carregando"){
+    meta.textContent="";
+    corpo.innerHTML=`<div class="ext-estado"><div class="spinner"></div>carregando o extrato diário de ${esc(perfil)}…</div>`;
+    return;
+  }
+  if(c.estado==="erro"){
+    meta.textContent="";
+    corpo.innerHTML=`<div class="ext-estado" role="alert"><div>Não deu para carregar o extrato diário.</div>
+      <div>${esc(c.erro&&c.erro.message||"erro desconhecido")}</div>
+      <button type="button" class="action-btn" id="ext-tentar">tentar de novo</button></div>`;
+    document.getElementById("ext-tentar").onclick=()=>carregarExtrato(perfil,true);
+    return;
+  }
+  if(c.estado==="vazio"){
+    meta.textContent="";
+    corpo.innerHTML=`<div class="ext-estado">Ainda não há extrato diário analisado para ${esc(perfil)}.<br>
+      A análise existente é de outro perfil e não é mostrada aqui.</div>`;
+    return;
+  }
+  const env=c.env,d=env.dados,m=extratoMesAtual(d);
+  const quando=env.gerado_em?new Date(env.gerado_em):null;
+  // A versão e o SHA da fonte ficam no recibo e na resposta; na tela, só a data
+  // e o que esta análise é em relação aos lançamentos.
+  meta.textContent="análise de "+(quando&&!isNaN(quando)?quando.toLocaleDateString("pt-BR"):"data não informada")+
+    " · complementar aos lançamentos";
+  const ocultas=extratoLer(perfil).ocultas||{};
+  const meses=d.months.map(x=>`<button type="button" class="filter-btn" data-mes="${esc(x.key)}" aria-pressed="${x.key===m.key}">${esc(EXTRATO_MESES_ROTULO[x.key.slice(5)]||x.key)}</button>`).join("");
+  const legenda=d.series.map((s,i)=>{
+    const t=m.totals&&m.totals[s.key],rs=m.reserve&&m.reserve[s.key],pd=m.pending&&m.pending[s.key];
+    const partes=[t==null?"sem itens datados":brl2(t)+(m.totals[s.key+"_est"]?" (inclui previsto)":"")];
+    if(rs)partes.push("+ reserva sem data "+brl2(rs));
+    if(pd)partes.push("fora da curva, a classificar "+brl2(pd));
+    return `<button type="button" data-serie="${esc(s.key)}" aria-pressed="${!ocultas[s.key]}"><span class="ext-sw c${i+1}" aria-hidden="true"></span>
+      <span>${esc(s.label)}<small>${esc(partes.join(" · "))}</small></span></button>`;
+  }).join("");
+  corpo.innerHTML=`
+    <div class="ext-meses" role="group" aria-label="mês do extrato">${meses}</div>
+    <div class="ext-cobertura"><strong>${esc(m.status_label||"")}</strong> · ${esc(m.coverage||"")}</div>
+    <div class="ext-legenda" aria-label="séries">${legenda}</div>
+    <div class="ext-estilos"><i aria-hidden="true"></i>observado <i class="tracejado" aria-hidden="true"></i>previsto</div>
+    <div class="ext-grafico" id="ext-grafico"><svg role="img" aria-labelledby="ext-svg-t ext-svg-d"></svg>
+      <div class="ext-dica" id="ext-dica" hidden></div></div>
+    <div class="ext-detalhe" id="ext-detalhe" aria-live="polite"></div>
+    <div class="section">
+      <div class="section-hdr"><span class="section-title">dia a dia</span></div>
+      <div class="ext-dias-cab" aria-hidden="true"><span>dia</span><span>competência</span><span>caixa próprio</span><span>status</span></div>
+      <div class="ext-dias" id="ext-dias"></div>
+    </div>
+    <div class="section">
+      <div class="section-hdr"><span class="section-title">financiar ou pagar à vista</span></div>
+      <div class="ext-comp" id="ext-comp"></div>
+    </div>`;
+  corpo.querySelectorAll(".ext-meses button").forEach(b=>b.onclick=()=>{
+    extratoGuardar(perfil,{mes:b.dataset.mes});extrato.fixo=null;renderExtrato();
+  });
+  corpo.querySelectorAll(".ext-legenda button").forEach(b=>b.onclick=()=>{
+    const o={...(extratoLer(perfil).ocultas||{})};o[b.dataset.serie]=!o[b.dataset.serie];
+    extratoGuardar(perfil,{ocultas:o});renderExtrato();
+  });
+  renderExtratoDias(d,m);
+  renderExtratoDetalhe(d,m,extrato.fixo);
+  renderExtratoComparador(d);
+  const caixa=document.getElementById("ext-grafico");
+  desenharExtrato(d,m);
+  if(window.ResizeObserver){
+    let largura=caixa.clientWidth;
+    extrato.obs=new ResizeObserver(()=>{if(caixa.clientWidth!==largura){largura=caixa.clientWidth;desenharExtrato(d,m);}});
+    extrato.obs.observe(caixa);
+  }
+}
+
+function desenharExtrato(d,m){
+  const caixa=document.getElementById("ext-grafico");
+  if(!caixa)return;
+  const svg=caixa.querySelector("svg"),dica=document.getElementById("ext-dica");
+  const W=Math.max(260,Math.floor(caixa.clientWidth-12)),estreito=W<480;
+  const H=estreito?250:300,L=64,R=10,T=12,B=40,iw=W-L-R,ih=H-T-B,nd=m.days.length;
+  const ocultas=extratoLer(perfil).ocultas||{};
+  const vis=d.series.map((s,i)=>({s,i})).filter(o=>!ocultas[o.s.key]);
+  let max=0;
+  vis.forEach(o=>m.days.forEach(x=>{const c=x[o.s.key];if(c&&c.cum>max)max=c.cum;}));
+  // Escala "redonda": passo 1, 2, 2,5 ou 5 × 10^k, quatro a cinco divisões.
+  const bruto=Math.max(max*1.08,100)/4,ex=Math.pow(10,Math.floor(Math.log10(bruto)));
+  const passo=[1,2,2.5,5,10].map(f=>f*ex).find(p=>p>=bruto);
+  const topo=Math.ceil(max*1.08/passo)*passo||passo*4;
+  const x=dia=>L+(dia-1)/nd*iw;
+  const y=v=>T+ih-v/topo*ih;
+  const rotY=v=>v>=1000?(v/1000).toLocaleString("pt-BR",{maximumFractionDigits:1})+" mil":String(Math.round(v));
+  let g="";
+  for(let v=0;v<=topo+1e-9;v+=passo)g+=`<line class="grade" x1="${L}" x2="${L+iw}" y1="${y(v)}" y2="${y(v)}"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${rotY(v)}</text>`;
+  const passoX=estreito?10:5;
+  for(let dia=passoX;dia<=nd;dia+=passoX)g+=`<text x="${x(dia)+iw/nd/2}" y="${T+ih+18}" text-anchor="middle">${dia}</text>`;
+  g+=`<rect class="moldura" x="${L}" y="${T}" width="${iw}" height="${ih}"/>`;
+  g+=`<text x="${L+iw/2}" y="${H-4}" text-anchor="middle">dia do mês</text>`;
+  g+=`<text transform="translate(14 ${T+ih/2}) rotate(-90)" text-anchor="middle">acumulado no mês (R$)</text>`;
+  // Degrau: o valor do dia d ocupa [d, d+1). Pontos nulos quebram a linha;
+  // observado e previsto são dois traços que se encostam na virada.
+  vis.forEach(o=>{
+    const P=m.days.map(z=>{const c=z[o.s.key];return c?{d:z.d,v:c.cum,est:!!c.est}:null;});
+    const trecho=(incluir)=>{
+      let s="",aberto=false;
+      P.forEach((p,i)=>{
+        if(!p||!incluir(p,i)){aberto=false;return;}
+        s+=aberto?`H${x(p.d)}V${y(p.v)}`:`M${x(p.d)},${y(p.v)}`;
+        aberto=true;
+        const prox=P[i+1];
+        if(!prox||!incluir(prox,i+1))s+=`H${x(p.d+1)}`;
+      });
+      return s;
+    };
+    const obs=trecho(p=>!p.est);
+    const prev=trecho((p,i)=>p.est||(P[i+1]&&P[i+1].est));
+    if(obs)g+=`<path class="linha s${o.i+1}" d="${obs}"/>`;
+    if(prev)g+=`<path class="linha prev s${o.i+1}" d="${prev}"/>`;
+  });
+  const temDado=vis.some(o=>m.days.some(z=>z[o.s.key]));
+  if(!temDado)g+=`<text class="vazio" x="${L+iw/2}" y="${T+ih/2}" text-anchor="middle">${vis.length?"sem itens datados neste mês":"nenhuma série selecionada"}</text>`;
+  g+=`<line class="guia" id="ext-guia" y1="${T}" y2="${T+ih}" style="display:none"/><g id="ext-marcas"></g>`;
+  g+=`<rect class="alvo" id="ext-alvo" x="${L}" y="${T}" width="${iw}" height="${ih}"/>`;
+  svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  svg.innerHTML=`<title id="ext-svg-t">despesas acumuladas por dia em ${esc(m.key)}</title><desc id="ext-svg-d">${esc(
+    d.series.map(s=>s.label+": "+(m.totals[s.key]==null?"sem itens datados":brl2(m.totals[s.key]))).join("; "))}</desc>`+g;
+
+  const dia=px=>Math.max(1,Math.min(nd,Math.floor((px-L)/iw*nd)+1));
+  const ponto=ev=>{const r=svg.getBoundingClientRect();return(ev.clientX-r.left)*W/r.width;};
+  const mostrar=(px,d0)=>{
+    const guia=document.getElementById("ext-guia"),marcas=document.getElementById("ext-marcas");
+    const cx=Math.max(L,Math.min(L+iw,px));
+    guia.setAttribute("x1",cx);guia.setAttribute("x2",cx);guia.style.display="";
+    let mk="",linhas="";
+    vis.forEach(o=>{
+      const c=extratoNoDia(m,o.s.key,d0);
+      if(c)mk+=`<circle class="m${o.i+1}" r="4" cx="${cx}" cy="${y(c.cum)}"/>`;
+      linhas+=`<div class="lin"><span class="ext-sw c${o.i+1}"></span><span>${esc(o.s.short)} ${c?brl2(c.cum)+(c.v==null?" · sem item datado":" · dia "+brl2(c.v))+(c.est?" · previsto":""):"sem itens datados"}</span></div>`;
+    });
+    marcas.innerHTML=mk;
+    dica.innerHTML=`<div>${String(d0).padStart(2,"0")}/${esc(m.key.slice(5))} · acumulado no fim do dia</div>${linhas}`;
+    dica.hidden=false;
+    const r=svg.getBoundingClientRect(),esc_=r.width/W,larg=dica.offsetWidth;
+    let left=cx*esc_+14;
+    if(left+larg>caixa.clientWidth)left=Math.max(4,cx*esc_-larg-14);
+    dica.style.left=left+"px";dica.style.top=(T*esc_+8)+"px";
+  };
+  const esconder=()=>{
+    const guia=document.getElementById("ext-guia");if(guia)guia.style.display="none";
+    const marcas=document.getElementById("ext-marcas");if(marcas)marcas.innerHTML="";
+    dica.hidden=true;
+  };
+  const alvo=document.getElementById("ext-alvo");
+  alvo.addEventListener("pointermove",ev=>{if(extrato.fixo==null){const px=ponto(ev);mostrar(px,dia(px));}});
+  alvo.addEventListener("pointerleave",()=>{if(extrato.fixo==null)esconder();});
+  alvo.addEventListener("click",ev=>{
+    const px=ponto(ev),d0=dia(px);
+    if(extrato.fixo===d0){extrato.fixo=null;esconder();}
+    else{extrato.fixo=d0;mostrar(px,d0);}
+    renderExtratoDetalhe(d,m,extrato.fixo);marcarDiaNaLista(extrato.fixo);
+  });
+  if(extrato.fixo!=null)mostrar(x(extrato.fixo)+iw/nd/2,extrato.fixo);else esconder();
+}
+
+function renderExtratoDetalhe(d,m,dia){
+  const el=document.getElementById("ext-detalhe");
+  if(!el)return;
+  if(dia==null){el.innerHTML=`<div class="tit">toque no gráfico ou num dia da lista</div>`;return;}
+  const z=m.days[dia-1];
+  const vals=d.series.map(s=>{
+    const c=extratoNoDia(m,s.key,dia);
+    return `<div><b>${esc(s.short)}</b>: ${c?(c.v==null?"sem item datado":brl2(c.v))+" · acumulado "+brl2(c.cum)+(c.est?" · previsto":""):"sem itens datados"}</div>`;
+  }).join("");
+  const ev=(z&&z.ev||[]).map(t=>`<li>${esc(t)}</li>`).join("");
+  el.innerHTML=`<div class="tit">${String(dia).padStart(2,"0")}/${esc(m.key.slice(5))}/${esc(m.key.slice(0,4))}</div><div class="vals">${vals}</div>${ev?`<ul>${ev}</ul>`:""}`;
+}
+
+function renderExtratoDias(d,m){
+  const el=document.getElementById("ext-dias");
+  const dias=m.days.filter(z=>(z.ev&&z.ev.length)||d.series.some(s=>z[s.key]&&z[s.key].v));
+  if(!dias.length){el.innerHTML=`<div class="ext-estado">Nenhum lançamento datado neste mês. Datas não confirmadas ficam na reserva do mês.</div>`;return;}
+  el.innerHTML=dias.map(z=>{
+    const cel=s=>{const c=extratoNoDia(m,s.key,z.d);
+      return `<span class="num">${c?(c.v==null?"—":brl2(c.v)):"—"}<small>${c?"acum. "+brl2(c.cum):"sem itens datados"}</small></span>`;};
+    const prev=d.series.some(s=>z[s.key]&&z[s.key].est);
+    // Os lançamentos do dia abrem só no dia escolhido: com todos abertos, um
+    // mês de cartão vira nove mil pixels de rolagem no celular.
+    const n=(z.ev||[]).length,aberto=extrato.fixo===z.d;
+    const ev=aberto?(z.ev||[]).map(t=>`<li>${esc(t)}</li>`).join(""):"";
+    return `<button type="button" class="ext-dia" data-dia="${z.d}" aria-pressed="${aberto}" aria-expanded="${aberto}">
+      <span class="data">${String(z.d).padStart(2,"0")}/${esc(m.key.slice(5))}</span>${d.series.map(cel).join("")}
+      <span class="st${prev?" prev":""}">${prev?"previsto":"observado"}${n?` · ${n} ${n===1?"lançamento":"lançamentos"}`:""}</span>${ev?`<ul>${ev}</ul>`:""}</button>`;
+  }).join("");
+  el.querySelectorAll(".ext-dia").forEach(b=>b.onclick=()=>{
+    const d0=Number(b.dataset.dia);
+    extrato.fixo=extrato.fixo===d0?null:d0;
+    desenharExtrato(d,m);renderExtratoDetalhe(d,m,extrato.fixo);marcarDiaNaLista(extrato.fixo);
+  });
+}
+// Escolher um dia (no gráfico ou na lista) abre os lançamentos dele na lista
+// e mantém o foco do teclado na linha escolhida.
+function marcarDiaNaLista(dia){
+  const c=extrato.cache[perfil];
+  if(!c||c.estado!=="ok")return;
+  const d=c.env.dados,m=extratoMesAtual(d);
+  const foco=document.activeElement&&document.activeElement.dataset?document.activeElement.dataset.dia:null;
+  renderExtratoDias(d,m);
+  if(foco){const b=document.querySelector(`#ext-dias .ext-dia[data-dia="${foco}"]`);if(b)b.focus();}
+}
+
+// Comparador: custo do crédito de UMA operação observada contra os pontos
+// DELA (não da fatura do mês). Pontos e valor do ponto começam vazios — vazio
+// é "não informado", e o resultado diz "pontuação pendente" em vez de tratar
+// como zero. Boleto pago no cartão Santander não pontua pela regra do banco.
+function renderExtratoComparador(d){
+  const el=document.getElementById("ext-comp");
+  const casos=Array.isArray(d.cases)?d.cases:[];
+  if(!casos.length){el.innerHTML=`<div class="ext-estado">Nenhuma operação observada nesta análise.</div>`;return;}
+  const salvo=extratoLer(perfil);
+  const caso=casos.find(c=>c.id===salvo.caso)||casos[0];
+  const sim=(salvo.sim&&salvo.sim[caso.id])||{};
+  const naoPontua=caso.pontua==="nao_pontua_regra";
+  el.innerHTML=`
+    <label for="ext-caso">Operação observada</label>
+    <select id="ext-caso">${casos.map(c=>`<option value="${esc(c.id)}"${c.id===caso.id?" selected":""}>${esc(c.label)}</option>`).join("")}</select>
+    <div class="ext-fatos">
+      <div><span>principal </span><b>${brl2(caso.principal)}</b></div>
+      <div><span>total pago </span><b>${brl2(caso.total)}${caso.parcelas>1?" em "+caso.parcelas+"x":""}</b></div>
+      <div><span>custo do crédito </span><b>${brl2(caso.custo)} (${pct2(caso.custo_pct)})</b></div>
+      <div><span>modalidade </span><b>${esc(caso.modalidade)}</b></div>
+    </div>
+    <div class="ext-campos">
+      <div><label for="ext-pts">Pontos desta operação</label>
+        <input id="ext-pts" type="text" inputmode="decimal" autocomplete="off" placeholder="${naoPontua?"não pontua":"pendente"}" ${naoPontua?"disabled":""} value="${esc(naoPontua?"":sim.pts??"")}"></div>
+      <div><label for="ext-val">R$ por 1.000 pontos</label>
+        <input id="ext-val" type="text" inputmode="decimal" autocomplete="off" placeholder="pendente" value="${esc(sim.val??"")}"></div>
+      <div><label for="ext-adi">Benefício do adiamento, R$ (hipótese)</label>
+        <input id="ext-adi" type="text" inputmode="decimal" autocomplete="off" placeholder="0" value="${esc(sim.adi??"")}"></div>
+    </div>
+    <div class="ext-saida" id="ext-saida" aria-live="polite"></div>
+    <div class="ext-regra" id="ext-regra"></div>`;
+  const regra=document.getElementById("ext-regra");
+  regra.textContent=(caso.pontua_txt||"")+" ";
+  if(d.rule&&EXTRATO_REGRA_URL.test(String(d.rule.url||""))){
+    const a=document.createElement("a");
+    a.href=d.rule.url;a.target="_blank";a.rel="noopener noreferrer";a.textContent=d.rule.label||"regra do banco";
+    regra.appendChild(a);
+  }
+  const calcular=()=>{
+    const pts=naoPontua?0:numeroDigitado(document.getElementById("ext-pts").value);
+    const val=numeroDigitado(document.getElementById("ext-val").value);
+    const adiTxt=document.getElementById("ext-adi").value;
+    const adi=numeroDigitado(adiTxt);
+    const r=comparadorExtrato(caso,{pts,val,adi,naoPontua});
+    document.getElementById("ext-saida").innerHTML=r.map(([k,v])=>`<div><span>${esc(k)}</span>${esc(v)}</div>`).join("");
+  };
+  document.getElementById("ext-caso").onchange=ev=>{extratoGuardar(perfil,{caso:ev.target.value});renderExtratoComparador(d);};
+  ["pts","val","adi"].forEach(k=>{
+    const inp=document.getElementById("ext-"+k);
+    inp.oninput=()=>{
+      const s=extratoLer(perfil),todos={...(s.sim||{})};
+      todos[caso.id]={...(todos[caso.id]||{}),[k]:inp.value.slice(0,24)};
+      extratoGuardar(perfil,{sim:todos});calcular();
+    };
+  });
+  calcular();
+}
+
+// Puro, para o teste: recebe números (ou null = vazio, NaN = inválido).
+function comparadorExtrato(caso,{pts,val,adi,naoPontua}){
+  const custo=Number(caso.custo)||0;
+  const invalido=[pts,val,adi].some(v=>v!==null&&v!==undefined&&isNaN(v));
+  if(invalido)return[["custo do crédito",brl2(custo)],["entrada","use só números, ex.: 1.500 ou 2,5"]];
+  const ad=adi??0;
+  let ben=null,benTxt;
+  if(naoPontua){ben=0;benTxt=brl2(0)+" (não pontua pela regra)";}
+  else if(pts==null||val==null)benTxt="pontuação pendente";
+  else{ben=pts/1000*val;benTxt=brl2(ben);}
+  let empate;
+  if(naoPontua)empate="não se aplica";
+  else if(val==null)empate="informe R$ por 1.000 pontos";
+  else if(val===0)empate="sem valor por ponto";
+  else empate=Math.ceil(Math.max(0,custo-ad)/val*1000).toLocaleString("pt-BR")+" pontos";
+  return[
+    ["custo do crédito",brl2(custo)],
+    ["benefício dos pontos",benTxt],
+    ["benefício do adiamento (hipótese)",brl2(ad)],
+    ["saldo (benefícios − custo)",ben==null?"pendente":brl2(ben+ad-custo)],
+    ["pontos para empatar",empate],
+  ];
+}
+
 function setTab(id,el){
   document.querySelectorAll(".tab").forEach(t=>{
     t.classList.remove("active");t.setAttribute("aria-selected","false");
@@ -3637,6 +4205,8 @@ function setTab(id,el){
   el.classList.add("active");
   el.setAttribute("aria-selected","true");
   document.getElementById("tab-"+id).classList.add("active");
+  abaAtual=id;
+  if(id==="extrato")abrirExtrato();
 }
 function atualizarNavegacaoMes(){
   const hoje=new Date(),noAtual=mesAtual.m===hoje.getMonth()+1&&mesAtual.y===hoje.getFullYear();
