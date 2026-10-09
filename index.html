@@ -575,6 +575,53 @@ tr.cat-row.aberta .cat-chevron{color:var(--accent);}
 .ext-regra a{color:var(--accent2);}
 .ext-estado{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:200px;
   color:var(--muted);font-size:14px;text-align:center;border:1px dashed var(--border2);border-radius:var(--r);padding:20px;}
+/* Projeção de caixa: outra visão da mesma aba. Tabela dia × entrada/saída/saldo
+   no computador; no celular cada dia vira dois pares (dia/saldo, entrada/saída). */
+.ext-modos{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+.ext-modos button{flex:1 1 140px;background:var(--bg3);border:1px solid var(--border);color:var(--muted);border-radius:8px;
+  padding:9px 12px;font-family:var(--sans);font-size:14px;min-height:44px;}
+.ext-modos button[aria-pressed="true"]{background:rgba(200,240,74,0.1);border-color:var(--accent);color:var(--accent);}
+.ext-check{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--text);min-height:44px;margin-bottom:6px;cursor:pointer;}
+.ext-check input{width:20px;height:20px;accent-color:var(--accent);flex:0 0 auto;}
+.ext-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0 12px;}
+.ext-kpi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;min-width:0;}
+.ext-kpi span{display:block;font-size:14px;color:var(--muted);margin-bottom:2px;}
+.ext-kpi b{display:block;font-family:var(--mono);font-size:16px;font-weight:400;color:var(--text);}
+.ext-kpi small{display:block;font-size:14px;color:var(--muted);margin-top:2px;line-height:1.4;}
+#tab-extrato .ext-neg{color:var(--red);}
+.ext-avisos{margin:0 0 12px 18px;font-size:14px;color:var(--amber);line-height:1.5;}
+.ext-proj-cab,.ext-proj-dia{display:grid;grid-template-columns:60px repeat(3,minmax(0,1fr));gap:2px 12px;align-items:baseline;}
+.ext-proj-cab{padding:0 13px 4px;font-family:var(--mono);font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);}
+.ext-proj-cab span:not(:first-child),.ext-proj-dia .num{text-align:right;}
+.ext-proj-dia{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;
+  color:var(--text);font-family:var(--sans);font-size:14px;text-align:left;min-height:44px;}
+button.ext-proj-dia{cursor:pointer;}
+.ext-proj-dia[aria-pressed="true"]{border-color:var(--accent);}
+.ext-proj-dia.calmo{background:none;border-style:dashed;color:var(--muted);padding:6px 12px;min-height:0;}
+.ext-proj-dia .data{font-family:var(--mono);}
+.ext-proj-dia .num{font-family:var(--mono);white-space:nowrap;}
+.ext-proj-dia .num small{display:none;}
+.ext-proj-dia .info{grid-column:1 / -1;font-size:14px;color:var(--muted);}
+.ext-proj-dia ul{grid-column:1 / -1;margin:6px 0 0 18px;font-size:14px;color:var(--muted);line-height:1.45;}
+.ext-proj-dia li{margin-bottom:4px;}
+.ext-proj-dia li b{color:var(--text);font-weight:400;font-family:var(--mono);}
+.ext-proj-dia li small{display:block;font-size:14px;}
+.ext-proj-dia li.desligado{opacity:0.6;}
+.ext-tag{display:inline-block;font-size:12px;color:var(--amber);border:1px solid rgba(240,168,74,0.4);border-radius:6px;padding:0 5px;margin-left:4px;white-space:nowrap;}
+.ext-pend{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;font-size:14px;line-height:1.5;}
+.ext-pend ul{margin:6px 0 10px 18px;color:var(--muted);}
+.ext-pend b{color:var(--text);font-weight:500;}
+@media(max-width:640px){
+  .ext-proj-cab{display:none;}
+  .ext-proj-dia{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px;}
+  .ext-proj-dia .data{order:1;}
+  .ext-proj-dia .sal{order:2;}
+  .ext-proj-dia .ent{order:3;text-align:left;}
+  .ext-proj-dia .sai{order:4;}
+  .ext-proj-dia .info,.ext-proj-dia ul{order:5;}
+  .ext-proj-dia .num small{display:block;font-family:var(--sans);font-size:14px;color:var(--muted);}
+  .ext-proj-dia.calmo .ent,.ext-proj-dia.calmo .sai,.ext-proj-dia.calmo .num small{display:none;}
+}
 @media(max-width:640px){
   .ext-dia,.ext-dias-cab{grid-template-columns:52px repeat(2,minmax(0,1fr));}
   .ext-dia .st{grid-column:1 / -1;text-align:left;}
@@ -3763,7 +3810,7 @@ const EXTRATO_API=PAINEL_API+"/extrato-diario";
 const EXTRATO_MESES_ROTULO={"01":"jan","02":"fev","03":"mar","04":"abr","05":"mai","06":"jun",
   "07":"jul","08":"ago","09":"set","10":"out","11":"nov","12":"dez"};
 const EXTRATO_REGRA_URL=/^https:\/\/www\.santander\.com\.br\/[\w\-./]*$/;
-const extrato={cache:{},seq:{},sessao:0,requests:{},fixo:null,obs:null};
+const extrato={cache:{},seq:{},sessao:0,requests:{},fixo:null,diaProj:null,obs:null};
 
 const brl2=v=>v==null||!isFinite(v)?"—":(v<0?"−":"")+"R$ "+Math.abs(v).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
 const pct2=v=>v==null||!isFinite(v)?"—":v.toLocaleString("pt-BR",{maximumFractionDigits:2})+"%";
@@ -3782,7 +3829,7 @@ function extratoGuardar(p,patch){
 function limparExtrato(){
   extrato.sessao++;
   const anteriores=extrato.requests;
-  extrato.requests={};extrato.cache={};extrato.fixo=null;
+  extrato.requests={};extrato.cache={};extrato.fixo=null;extrato.diaProj=null;
   Object.values(anteriores).forEach(r=>r.controller?.abort());
   if(extrato.obs){extrato.obs.disconnect();extrato.obs=null;}
   const corpo=document.getElementById("ext-corpo"),meta=document.getElementById("ext-meta");
@@ -3889,7 +3936,7 @@ async function carregarExtrato(p,forcar=false){
 }
 
 function abrirExtrato(){
-  extrato.fixo=null;
+  extrato.fixo=null;extrato.diaProj=null;
   return carregarExtrato(perfil);
 }
 
@@ -3934,6 +3981,7 @@ function renderExtrato(){
   // e o que esta análise é em relação aos lançamentos.
   meta.textContent="análise de "+(quando&&!isNaN(quando)?quando.toLocaleDateString("pt-BR"):"data não informada")+
     " · complementar aos lançamentos";
+  if(extratoModo(d)==="projecao"){renderProjecao(d,corpo);return;}
   const ocultas=extratoLer(perfil).ocultas||{};
   const meses=d.months.map(x=>`<button type="button" class="filter-btn" data-mes="${esc(x.key)}" aria-pressed="${x.key===m.key}">${esc(EXTRATO_MESES_ROTULO[x.key.slice(5)]||x.key)}</button>`).join("");
   const legenda=d.series.map((s,i)=>{
@@ -3944,7 +3992,7 @@ function renderExtrato(){
     return `<button type="button" data-serie="${esc(s.key)}" aria-pressed="${!ocultas[s.key]}"><span class="ext-sw c${i+1}" aria-hidden="true"></span>
       <span>${esc(s.label)}<small>${esc(partes.join(" · "))}</small></span></button>`;
   }).join("");
-  corpo.innerHTML=`
+  corpo.innerHTML=`${extratoModosHtml(d,"origem")}
     <div class="ext-meses" role="group" aria-label="mês do extrato">${meses}</div>
     <div class="ext-cobertura"><strong>${esc(m.status_label||"")}</strong> · ${esc(m.coverage||"")}</div>
     <div class="ext-legenda" aria-label="séries">${legenda}</div>
@@ -3968,6 +4016,7 @@ function renderExtrato(){
     const o={...(extratoLer(perfil).ocultas||{})};o[b.dataset.serie]=!o[b.dataset.serie];
     extratoGuardar(perfil,{ocultas:o});renderExtrato();
   });
+  ligarModos(corpo);
   renderExtratoDias(d,m);
   renderExtratoDetalhe(d,m,extrato.fixo);
   renderExtratoComparador(d);
@@ -4113,6 +4162,120 @@ function marcarDiaNaLista(dia){
   const foco=document.activeElement&&document.activeElement.dataset?document.activeElement.dataset.dia:null;
   renderExtratoDias(d,m);
   if(foco){const b=document.querySelector(`#ext-dias .ext-dia[data-dia="${foco}"]`);if(b)b.focus();}
+}
+
+// ── PROJEÇÃO DE CAIXA ────────────────────────────────────────────────────
+// Outra visão da mesma análise (chave opcional `cash_projection`, v3): entrada,
+// saída e saldo PREVISTOS por dia, da abertura confirmada até dezembro. Não
+// substitui as curvas de origem e não recalcula nada: lê os números do modelo
+// privado. Os acertos do casal são hipótese e só entram quando a pessoa marca
+// "Considerar acertos previstos"; o padrão é desligado, para não contar com um
+// recebimento que ninguém confirmou. Ficam no navegador só as preferências
+// (visão, mês, caixa marcada), nunca valores.
+function projecaoValida(p){
+  if(!p||typeof p!=="object"||p.schema!=="caixa_diario_v1"||!Array.isArray(p.months)||!p.months.length)return false;
+  const par=o=>o&&isFinite(o.sem)&&isFinite(o.com);
+  return p.months.every(m=>/^\d{4}-\d{2}$/.test(String(m.key))&&par(m.abre)&&par(m.fim)&&
+    m.minimo&&m.minimo.sem&&m.minimo.com&&Array.isArray(m.days)&&m.days.length&&
+    m.days.every((x,i)=>x&&x.d===m.days[0].d+i&&par(x.saldo)&&Array.isArray(x.ev)));
+}
+function extratoModo(d){
+  return projecaoValida(d.cash_projection)&&extratoLer(perfil).modo==="projecao"?"projecao":"origem";
+}
+function extratoModosHtml(d,modo){
+  if(!projecaoValida(d.cash_projection))return "";
+  const b=(k,t)=>`<button type="button" data-modo="${k}" aria-pressed="${modo===k}">${t}</button>`;
+  return `<div class="ext-modos" role="group" aria-label="visão do extrato">${b("origem","Gastos por origem")}${b("projecao","Projeção de caixa")}</div>`;
+}
+function ligarModos(corpo){
+  corpo.querySelectorAll(".ext-modos button").forEach(b=>b.onclick=()=>{
+    extratoGuardar(perfil,{modo:b.dataset.modo});extrato.fixo=null;extrato.diaProj=null;renderExtrato();
+  });
+}
+const soma2=(a,b)=>Math.round((a+b)*100)/100;
+const num2=v=>v==null||!isFinite(v)?"—":(v<0?"−":"")+Math.abs(v).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const dataBR=iso=>String(iso).slice(8,10)+"/"+String(iso).slice(5,7);
+
+// O único lugar que diz quanto vale um dia da projeção. Com acertos, o acerto
+// do dia soma na entrada e o saldo é o do cenário "com"; sem, nenhum dos dois.
+function projecaoNoDia(x,com){
+  const acerto=x.acerto||0;
+  return{entrada:com?soma2(x.entrada||0,acerto):(x.entrada||0),saida:x.saida||0,acerto,
+    saldo:com?x.saldo.com:x.saldo.sem};
+}
+function projecaoMesAtual(p){
+  const salvo=extratoLer(perfil).mesProj;
+  return p.months.find(m=>m.key===salvo)||p.months.find(m=>m.key===p.default_month)||p.months[0];
+}
+
+function renderProjecao(d,corpo){
+  const p=d.cash_projection,com=extratoLer(perfil).acertos===true,k=com?"com":"sem";
+  const m=projecaoMesAtual(p);
+  const meses=p.months.map(x=>`<button type="button" class="filter-btn" data-mesproj="${esc(x.key)}" aria-pressed="${x.key===m.key}">${esc(EXTRATO_MESES_ROTULO[x.key.slice(5)]||x.key)}</button>`).join("");
+  const min=m.minimo[k],falta=m.primeiro_negativo&&m.primeiro_negativo[k];
+  const primeiro=m.key===p.months[0].key;
+  const kpis=[
+    ["saldo no início",m.abre[k],primeiro&&p.abertura?"confirmado em "+dataBR(p.data_base):"fim do mês anterior"],
+    ["entradas previstas",com?soma2(m.entrada,m.acerto||0):m.entrada,com?"inclui acertos "+brl2(m.acerto||0):"sem acertos do casal"],
+    ["saídas previstas",m.saida,"cartão "+brl2(m.cartao)+" · fora do cartão "+brl2(m.fora_cartao)],
+    ["saldo no fim do mês",m.fim[k],"em "+dataBR(m.days[m.days.length-1].data)],
+    ["mínimo do mês",min.v,"em "+dataBR(min.data)+(falta?" · 1ª falta de caixa em "+dataBR(falta.data):"")],
+  ].map(([t,v,s])=>`<div class="ext-kpi" data-kpi="${esc(t)}"><span>${esc(t)}</span><b class="${v<0?"ext-neg":""}">${brl2(v)}</b><small>${esc(s)}</small></div>`).join("");
+  corpo.innerHTML=`${extratoModosHtml(d,"projecao")}
+    <div class="ext-meses" role="group" aria-label="mês da projeção">${meses}</div>
+    <label class="ext-check"><input type="checkbox" id="ext-acertos"${com?" checked":""}> Considerar acertos previstos</label>
+    <div class="ext-cobertura"><strong>Previsão</strong> · ${esc(com
+      ?"com os acertos líquidos do casal no dia 30, se forem recebidos até lá"
+      :"sem acertos do casal: a transferência líquida fica pendente")}</div>
+    <div class="ext-kpis" id="ext-kpis">${kpis}</div>
+    <ul class="ext-avisos">${(p.avisos||[]).map(t=>`<li>${esc(t)}</li>`).join("")}</ul>
+    <div class="section">
+      <div class="section-hdr"><span class="section-title">dia a dia · valores em R$</span></div>
+      <div class="ext-proj-cab" aria-hidden="true"><span>dia</span><span>entrada</span><span>saída</span><span>saldo</span></div>
+      <div class="ext-dias" id="ext-proj-dias"></div>
+    </div>
+    <div class="section">
+      <div class="section-hdr"><span class="section-title">pendências e itens sem data</span></div>
+      <div class="ext-pend" id="ext-pend"></div>
+    </div>`;
+  corpo.querySelectorAll("[data-mesproj]").forEach(b=>b.onclick=()=>{
+    extratoGuardar(perfil,{mesProj:b.dataset.mesproj});extrato.diaProj=null;renderExtrato();
+  });
+  document.getElementById("ext-acertos").onchange=ev=>{extratoGuardar(perfil,{acertos:!!ev.target.checked});renderExtrato();};
+  ligarModos(corpo);
+  renderProjecaoDias(m,com);
+  const pend=(p.pendencias||[]).map(x=>`<li><b>${esc(x.item)}</b>: ${esc(x.detalhe)}</li>`).join("");
+  const semData=(p.sem_data||[]).map(t=>`<li>${esc(t)}</li>`).join("");
+  document.getElementById("ext-pend").innerHTML=
+    (pend?`<b>A confirmar</b><ul>${pend}</ul>`:"")+(semData?`<b>Fora da projeção (sem data ou sem valor)</b><ul>${semData}</ul>`:"");
+}
+
+function projecaoEventoHtml(e,com){
+  const desligado=e.tipo==="acerto"&&!com;
+  const tag=e.fora_cartao?`<span class="ext-tag">fora do cartão</span>`:"";
+  return `<li${desligado?' class="desligado"':""}><b>${e.valor<0?"−":"+"}${brl2(Math.abs(e.valor))}</b> ${esc(e.desc)} · ${esc(e.meio)}${tag}
+    <small>${desligado?"não considerado (marque “Considerar acertos previstos”) · ":""}previsto · ${esc(e.nota||"")}</small></li>`;
+}
+
+function renderProjecaoDias(m,com){
+  const el=document.getElementById("ext-proj-dias");
+  if(!el)return;
+  el.innerHTML=m.days.map(x=>{
+    const v=projecaoNoDia(x,com),n=x.ev.length,aberto=extrato.diaProj===x.data;
+    const cel=(cls,rot,val,vazio)=>`<span class="num ${cls}${val<0?" ext-neg":""}"><small>${rot}</small>${vazio?"—":num2(val)}</span>`;
+    const celulas=`<span class="data">${esc(dataBR(x.data))}</span>${cel("ent","entrada",v.entrada,!v.entrada)}${cel("sai","saída",v.saida,!v.saida)}${cel("sal","saldo",v.saldo,false)}`;
+    if(!n)return `<div class="ext-proj-dia calmo" data-dia="${esc(x.data)}">${celulas}<span class="info">sem movimento previsto</span></div>`;
+    const fora=x.ev.filter(e=>e.fora_cartao).length;
+    const info=`${n} ${n===1?"evento previsto":"eventos previstos"}${fora?` · ${fora} fora do cartão`:""}`;
+    const lista=aberto?`<ul>${x.ev.map(e=>projecaoEventoHtml(e,com)).join("")}</ul>`:"";
+    return `<button type="button" class="ext-proj-dia" data-dia="${esc(x.data)}" aria-pressed="${aberto}" aria-expanded="${aberto}">${celulas}<span class="info">${info}</span>${lista}</button>`;
+  }).join("");
+  el.querySelectorAll("button.ext-proj-dia").forEach(b=>b.onclick=()=>{
+    const dia=b.dataset.dia;
+    extrato.diaProj=extrato.diaProj===dia?null:dia;
+    renderProjecaoDias(m,com);
+    const f=document.querySelector(`#ext-proj-dias button[data-dia="${dia}"]`);if(f)f.focus();
+  });
 }
 
 // Comparador: custo do crédito de UMA operação observada contra os pontos
