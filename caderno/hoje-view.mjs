@@ -1,3 +1,4 @@
+import { faixaOpenFinance, sinaisOpenFinance, avisoProjecao } from './open-finance-view.mjs';
 // D008 (+ D012_Hoje): clona as fontes aprovadas. Saldos vêm de lerSaldosInformados; projeção e
 // eventos vêm da análise recebida; últimos lançamentos são a lista que o motor já montou.
 const parse = s => new DOMParser().parseFromString(s, 'text/html').querySelector('x-dc > div');
@@ -80,7 +81,11 @@ export function proximosDias(modelo, agora) {
 }
 
 export function hojeView(fontes, h, saldos, modelo, agora, mob, estado = {}, acoes = {}) {
-  const proj = cardProjecao(modelo, agora), sinais = sinaisAtencao(h, saldos);
+  // D-027: Open Finance só para quem tem conexões (estado.of = null para a Julia).
+  const of = estado.of || null;
+  const proj = cardProjecao(modelo, agora), sinais = [...(of ? sinaisOpenFinance(of) : []), ...sinaisAtencao(h, saldos)];
+  const avisoOf = of && proj ? avisoProjecao(of, proj.base) : null;
+  const sincronizando = of?.estado === 'sincronizando';
   const tituloProj = proj ? 'Em ' + isoDdmm(proj.data) + ' · análise de ' + isoDdmm(proj.base) : null;
   const d018 = parse(fontes.D018_Hoje), bloco = v => d018.querySelector('sc-if[value="{{ v.' + v + ' }}"]').firstElementChild;
   const alvo30 = isoLocal(agora).slice(0, 7) + '-30';
@@ -94,6 +99,8 @@ export function hojeView(fontes, h, saldos, modelo, agora, mob, estado = {}, aco
     const [cab, grade] = main.children;
     cab.firstElementChild.firstElementChild.textContent = SEMANA[agora.getDay()] + ', ' + agora.getDate() + ' de ' + MESES[agora.getMonth()] + ' de ' + agora.getFullYear();
     const reler = cab.querySelector('button'); reler.onclick = acoes.reler; if (estado.relendo) { reler.disabled = true; reler.setAttribute('aria-busy', 'true'); }
+    // D-027: sincronizando, o Reler fica desligado (mesmo estilo do botão ocupado).
+    if (sincronizando) { reler.disabled = true; reler.style.cssText += '; background: #ECEAE4; color: #5D6068; border-color: #DDDAD2; cursor: not-allowed'; }
     const [esq, dir] = grade.children;
     const [secSaldos, secRecentes] = esq.children;
     const cards = secSaldos.children[1];
@@ -130,6 +137,7 @@ export function hojeView(fontes, h, saldos, modelo, agora, mob, estado = {}, aco
       secProj.querySelector('a').href = './projecao.html';
       // D018: "Pode não incluir…" em linha própria, âmbar escuro, logo abaixo do título (inserida por último para não deslocar os índices).
       if (proj.outraData) secProj.insertBefore(clone(d018.querySelector('sc-if[value="{{ v.outra }}"] span')), secProj.children[1]);
+      if (avisoOf) { const a = clone(d018.querySelector('sc-if[value="{{ v.outra }}"] span')); a.textContent = avisoOf; secProj.insertBefore(a, secProj.children[1]); }
     } else if (estado.erroAnalise) secProj.replaceWith(erroAnalise(false));
     else {
       const c = clone(bloco(modelo ? 'indisponivel' : 'semAnalise'));
@@ -139,6 +147,8 @@ export function hojeView(fontes, h, saldos, modelo, agora, mob, estado = {}, aco
     const [hAt, mCob, mBranco, , nota] = [...secAt.children];
     secAt.replaceChildren(hAt, ...sinais.map(s => { const n = clone(s.tipo === 'cobertura' ? mCob : mBranco); negrito(n, [s.titulo], s.texto); return n; }), nota);
     if (estado.relerFalhou) { const f = clone(bloco('reler')); f.querySelector('button').onclick = acoes.reler; main.insertBefore(f, grade); }
+    // D-027: faixa entre o cabeçalho e a grade; o aviso do Reler vem antes dela.
+    if (of) main.insertBefore(faixaOpenFinance(fontes, of, false, acoes), grade);
     const prox = proximosDias(modelo, agora);
     if (modelo) {
       const [hP, mP] = secProx.children; const notaP = secProx.lastElementChild; notaP.textContent = 'Eventos da análise diária, um por linha, na ordem da data.';
@@ -161,6 +171,10 @@ export function hojeView(fontes, h, saldos, modelo, agora, mob, estado = {}, aco
   else if (estado.erroAnalise) blocoProj.replaceWith(erroAnalise(true));
   else { blocoProj.children[0].textContent = modelo ? 'Projeção indisponível' : 'Sem análise diária ainda'; blocoProj.children[0].style.fontWeight = '600'; blocoProj.children[1].remove(); blocoProj.lastElementChild.textContent = modelo ? 'A análise de ' + isoDdmm(modelo.fonte.data_base) + ' não traz o saldo de ' + isoDdmm(alvo30) + '. Não é saldo zero.' : 'A previsão do fim do mês aparece quando houver análise. Não é saldo zero.'; blocoProj.style.borderStyle = 'dashed'; }
   reler.onclick = acoes.reler; if (estado.relendo) { reler.disabled = true; reler.setAttribute('aria-busy', 'true'); }
+  if (sincronizando) { reler.disabled = true; reler.style.cssText += '; background: #ECEAE4; color: #5D6068; border-color: #DDDAD2; cursor: not-allowed'; }
+  // D-027: cartão depois do bloco da projeção e antes de "Reler a base".
+  if (of) corpo.insertBefore(faixaOpenFinance(fontes, of, true, acoes), reler);
+  if (avisoOf && proj) blocoProj.children[0].textContent = blocoProj.children[0].textContent.replace(/\.?\s*$/, '. ') + avisoOf;
   if (estado.relerFalhou) corpo.insertBefore(falhaReler(), reler);
   for (const n of corpo.children) n.style.flexShrink = '0';
   return tela;

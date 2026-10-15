@@ -4555,7 +4555,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")fecharMenuPerfil();}
   buscarPainel = async function () {
     respostaCaderno = null;
     const d = comCasal(await buscarPainelOriginal());
-    respostaCaderno = { escopo: d && d.escopo, perfil: d && d.perfil,
+    respostaCaderno = { escopo: d && d.escopo, perfil: d && d.perfil, openFinance: d && d.open_finance,
       casal: !!(d && d.escopo === 'pessoa' && d.casal && d.casal.disponivel === true && d.casal.perfil !== d.perfil) };
     // Linhas brutas de saldo da própria pessoa: o leitor D008 distingue
     // ausência de zero, o que o motor (Number()||0) não faz.
@@ -4721,6 +4721,31 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")fecharMenuPerfil();}
       tabelaTexto: brl2(s.porCat[CAT_ACERTO]), liquido: isLiq(), proprias: perfil === 'Julia', shared: perfil === 'Lucas',
       itens: itens.map(x => ({ ...x, abre: !x.r.projetado && x.r.produto !== 'sintetico' && getMovimentosDisplay().some(r => r.id === x.r.id) })) };
   };
+  // ── Open Finance (D-027) ──────────────────────────────────────────────
+  // Só o Lucas tem conexões; a regra vem do perfil declarado pela base, nunca
+  // do e-mail. Sem o bloco na leitura, a faixa aparece "sem sincronização
+  // registrada" em vez de sumir.
+  window.cadernoOpenFinance = () => escopoAtivo() && perfil === 'Lucas'
+    ? (respostaCaderno.openFinance || { ultima: null }) : null;
+  // POST /sincronizar e, terminado, a mesma releitura do "Reler a base".
+  window.cadernoSincronizar = async () => {
+    if (!window.cadernoOpenFinance()) throw new Error('sem contas no Open Finance');
+    const p = perfil, t = idToken;
+    let r;
+    try {
+      r = await fetch(PAINEL_API + '/sincronizar', { method: 'POST', headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' }, body: '{}' });
+    } catch { throw new Error('sem conexão'); }
+    const corpo = await r.json().catch(() => ({}));
+    // Sessão vencida ou conta recusada: as mesmas telas da leitura (D001 3 e 2).
+    if (r.status === 401) { erroDaApi(r, corpo); idToken = null; mostrarTelaDeEntrada(); throw new Error('sessão encerrada'); }
+    if (r.status === 403 && corpo.erro !== 'sem contas no Open Finance para este perfil') {
+      erroDaApi(r, corpo); mostrarFalhaDeCarga({ status: 403 }, emailConectado); throw new Error('sessão encerrada');
+    }
+    if (!r.ok) throw new Error(corpo.erro || ('HTTP ' + r.status));
+    if (idToken === t && perfil === p) await window.cadernoReler();
+    return corpo;
+  };
+
   window.cadernoCaixaMes = d => navMes(d);
   window.cadernoCaixaHoje = () => irParaHoje();
   window.cadernoCaixaModo = liq => { document.getElementById('toggle-liq').checked = liq; renderAll(); };

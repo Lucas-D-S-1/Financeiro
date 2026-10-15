@@ -78,6 +78,23 @@ async function reler() {
   render(); [...host.querySelectorAll('button')].find(b => b.textContent.trim() === 'Reler a base')?.focus({ preventScroll: true });
 }
 
+// D-027: sincronizar com o Open Finance. Os números só mudam no fim (a ponte
+// relê a base depois do POST); o foco fica no botão.
+const sinc = { resposta: null, estado: 'repouso', demorando: false, erro: null };
+async function sincronizar() {
+  if (sinc.estado === 'sincronizando' || !window.cadernoSincronizar) return;
+  Object.assign(sinc, { estado: 'sincronizando', demorando: false, erro: null }); render(); focarSinc();
+  const relogio = setTimeout(() => { if (sinc.estado === 'sincronizando') { sinc.demorando = true; render(); focarSinc(); } }, 60000);
+  try { sinc.resposta = await window.cadernoSincronizar(); sinc.estado = 'repouso'; }
+  catch (e) { sinc.estado = 'erro'; sinc.erro = String(e?.message || 'sem conexão'); }
+  finally { clearTimeout(relogio); render(); focarSinc(); }
+}
+function focarSinc() { host.querySelector('section[aria-label="Open Finance"] button')?.focus({ preventScroll: true }); }
+function modeloOpenFinance() {
+  const of = window.cadernoOpenFinance?.();
+  return of ? { ultima: of.ultima ?? null, ...sinc } : null;
+}
+
 function ligarNavegacao(view, mob) {
   if (!mob) {
     view.querySelector('nav')?.replaceWith(barraIndividual(fontes, ATIVO, { conta: abrirConta }, pessoaSessao));
@@ -129,7 +146,7 @@ function construir(mob) {
     window.__HOJE_PREVIEW__ = { saldos, sinais: null };
     // D-026: erro de leitura da análise é distinto de ausência e de formato inválido.
     const erroAnalise = !modelo && !!analise?.erro && !analise.formato;
-    return hojeView(fontes, h, saldos, modelo, agora, mob, { ...est, erroAnalise }, { reler, relerAnalise: () => location.reload() });
+    return hojeView(fontes, h, saldos, modelo, agora, mob, { ...est, erroAnalise, of: modeloOpenFinance() }, { reler, relerAnalise: () => location.reload(), sincronizar });
   }
   if (modulo === 'D007') {
     const s = window.cadernoInvestimentos(); if (!s) return null;
