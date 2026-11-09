@@ -36,6 +36,7 @@ const ESTILO_RES_CEL = {
 // Resumo do estado 3/4: partes com zero somem; "já estavam no caderno" junta o
 // que casou com o histórico agora e o que já estava ligado de antes.
 export function resumoSincronizacao(r) {
+  if(r.modo==='coleta' || r.financeiro_bloqueado) return {novo:false,texto:'Dados coletados. A conciliação financeira tem pendências para revisão e aprovação.'};
   const novos = Number(r.novos) || 0, ajust = Number(r.ajustados) || 0, saldos = Number(r.saldos) || 0;
   const ja = (Number(r.casados) || 0) + (Number(r.ja_lancados) || 0);
   const partesSaldo = saldos ? [plural(saldos, 'saldo atualizado', 'saldos atualizados')] : [];
@@ -47,6 +48,29 @@ export function resumoSincronizacao(r) {
   const partes = [novos && plural(novos, 'novo', 'novos'), ajust && plural(ajust, 'ajustado', 'ajustados'), ...partesSaldo,
     ja && ja + ' já estavam no caderno'].filter(Boolean);
   return { novo: true, texto: partes.join(' · ') + '. A tela foi relida.', curto: partes.filter(p => !/já estavam/.test(p)).join(' · ') };
+}
+
+// Frases por conexão: pedido, conclusão e leitura local são eventos distintos.
+export function diagnosticoConexao(c) {
+  if (c.status === 'reconectar') return 'Precisa reconectar no meu.pluggy.ai.';
+  if (c.status === 'em_curso' || c.atualizacao === 'em_curso') return c.forcada
+    ? 'Pedido aceito; atualização do banco ainda em curso. Lidos os dados disponíveis.'
+    : 'Atualização do banco em curso. Lidos os dados disponíveis.';
+  if (c.status === 'parcial') return 'Atualização parcial; alguns produtos podem estar desatualizados.';
+  // A1: recusa do pedido e falha da conexão são informações independentes.
+  const falhaAnterior = c.status === 'erro' ? 'Falha na conexão. ' : '';
+  const leitura = c.status === 'erro' ? ' Confira a data do banco.' : ' Lidos os dados disponíveis.';
+  if (c.atualizacao === 'limite_frequencia') {
+    const ate = data(c.tentar_apos);
+    return falhaAnterior + 'Limite de frequência.' + leitura +
+      (ate ? ' Nova tentativa permitida a partir de ' + ddmm(ate) + ' ' + hora(ate) + '.' : ' O serviço não informou quando tentar novamente.');
+  }
+  if (c.atualizacao === 'manual_indisponivel') return falhaAnterior + 'Atualização manual indisponível.' + leitura + ' Esperar uma hora não libera o pedido.';
+  if (c.status === 'erro') return 'Falha na atualização. Confira a data do banco; a leitura pode conter dados anteriores.';
+  if (c.atualizacao === 'proxy_cache') return 'Lidos os dados disponíveis no Meu Pluggy. A atualização do banco é automática.';
+  if (c.atualizacao === 'erro') return 'Falha na atualização. Confira a data do banco; a leitura pode conter dados anteriores.';
+  if (c.forcada && c.atualizacao === 'concluida') return 'Pedido aceito e atualização concluída pelo banco.';
+  return 'Lidos os dados disponíveis. Confira a data do banco.';
 }
 
 function conexoesDe(modelo) {
@@ -62,42 +86,35 @@ export function faixaOpenFinance(fontes, modelo, mob, acoes = {}) {
 
   // ── Linha de status (role=status, sempre presente) ────────────────────────
   let linha;
-  if (sinc) linha = modelo.demorando ? 'Ainda sincronizando. Os bancos estão demorando para responder.'
-    : mob ? 'Sincronizando com o Santander e o Itaú. Até 1 minuto; os números só mudam no fim.'
-      : 'Sincronizando com o Santander e o Itaú. Pode levar até 1 minuto; os números abaixo continuam os de antes até terminar.';
-  else if (executado) linha = mob ? 'Última sincronização ' + quando(executado, agora) + ' · roda 1 vez por dia'
-    : 'Última sincronização: ' + quando(executado, agora) + '. Roda sozinha uma vez por dia.';
-  else linha = 'Ainda não houve sincronização. A rotina roda uma vez por dia.';
+  if (sinc) linha = modelo.demorando ? 'A leitura continua. A atualização dos bancos pode demorar mais.'
+    : mob ? 'Lendo o Open Finance. Os números mudam ao concluir a leitura.'
+      : 'Lendo o Open Finance. Os números abaixo continuam os de antes até a leitura terminar.';
+  else if (executado) linha = mob ? 'Última leitura local ' + quando(executado, agora) + ' · roda 1 vez por dia'
+    : 'Última leitura local: ' + quando(executado, agora) + '. Roda sozinha uma vez por dia.';
+  else linha = 'Ainda não houve leitura local. A rotina roda uma vez por dia.';
 
-  // ── Caixa de resultado (só depois de um POST nesta sessão) ────────────────
+  // U01: a coleta OFF gravou fila/manifesto no banco. O GET inicial entrega
+  // esse resultado em ultima, inclusive após reload e execução diária.
+  // Sucessos antigos não viram mensagem transitória novamente; uma resposta
+  // nova desta sessão tem precedência sobre a execução persistida anterior.
+  const persistido = ultima?.resultado;
+  const pendente = v => v?.modo === 'coleta' || v?.financeiro_bloqueado === true;
+  const resultado = r || (pendente(persistido) ? persistido : null);
+
+  // ── Resultado da sessão ou aviso persistido de pendência ────────────────
   let res = null;
-  if (erroGeral) res = { tipo: 'erro', titulo: 'Não deu para sincronizar.', texto: 'O Open Finance respondeu: “' + (modelo.erro || 'sem conexão') + '”. Nada foi alterado na base.' };
-  else if (r && !sinc) {
-    const h = hora(data(r.executado_em) || agora), s = resumoSincronizacao(r);
-    const ruins = conns.filter(c => c.status === 'reconectar' || c.status === 'erro'), bons = conns.filter(c => !ruins.includes(c)).map(c => c.banco);
-    if (ruins.length) {
-      const recon = ruins.find(c => c.status === 'reconectar');
-      const nome = (recon || ruins[0]).banco;
-      res = { tipo: 'aviso', titulo: (bons.join(' e ') || 'Nada') + ' sincronizado às ' + h + ':', texto: '',
-        resumo: s.novo ? s.curto + '.' : s.texto };
-      res.texto = recon
-        ? (mob ? 'O ' + nome + ' não foi consultado; nada do ' + nome + ' foi alterado. Reconecte e sincronize de novo.'
-          : 'O ' + nome + ' não foi consultado: a autorização no Open Finance precisa ser renovada. Reconecte no meu.pluggy.ai e sincronize de novo. Nada do ' + nome + ' foi alterado.')
-        : 'O ' + nome + ' não respondeu desta vez. Nada do ' + nome + ' foi alterado; a rotina de amanhã tenta de novo, ou sincronize mais tarde.';
-      res.texto = res.resumo + ' ' + res.texto;
-    } else if (r.forcada_bloqueada_ate) {
-      const ate = data(r.forcada_bloqueada_ate);
-      const quandoAte = ate && ate.toDateString() === agora.toDateString() ? hora(ate) : ate ? ddmm(ate) + ' às ' + hora(ate) : '';
-      res = { tipo: 'aviso', titulo: 'Sincronizado às ' + h + ' com o que o Open Finance já tinha.',
-        texto: (mob ? 'Os bancos só voltam a ser consultados às ' + quandoAte + '.'
-          : 'Os bancos só podem ser consultados de novo a partir das ' + quandoAte + '; até lá, sincronizar não traz nada mais recente que as datas acima.') + ' ' + s.texto,
-        link: s.novo };
-    } else res = { tipo: 'ok', titulo: 'Sincronizado às ' + h + '.', texto: s.texto, link: s.novo };
+  if (erroGeral) res = { tipo: 'erro', titulo: 'Não deu para sincronizar.', texto: 'O Open Finance respondeu: “' + (modelo.erro || 'sem conexão') + '”. Releia a base para conferir o resultado.' };
+  else if (resultado && !sinc) {
+    const h = hora(data(resultado.executado_em) || executado || agora), s = resumoSincronizacao(resultado);
+    const aviso = pendente(resultado) || conns.some(c => c.status !== 'ok' ||
+      ['proxy_cache', 'limite_frequencia', 'manual_indisponivel', 'em_curso', 'erro'].includes(c.atualizacao));
+    res = { tipo: aviso ? 'aviso' : 'ok', titulo: r ? 'Leitura local concluída às ' + h + '.' : 'Conciliação financeira pendente.',
+      texto: s.texto, link: s.novo };
   }
 
   const textoConexao = (c, prefixo) => {
     const d = data(c.banco_atualizado_em);
-    return d ? prefixo + ddmm(d) + ' ' + hora(d) : 'banco ainda não consultado';
+    return (d ? prefixo + ddmm(d) + ' ' + hora(d) : 'data do banco indisponível') + ' · ' + diagnosticoConexao(c);
   };
 
   if (!mob) {
@@ -113,7 +130,7 @@ export function faixaOpenFinance(fontes, modelo, mob, acoes = {}) {
       const [nome, sub] = li.querySelectorAll(':scope > span');
       nome.textContent = c.banco + (c.status === 'reconectar' ? ' · precisa reconectar' : c.status === 'erro' ? ' · não respondeu' : '');
       nome.style.cssText = 'font-size: 14px; font-weight: 600' + (ruim ? '; color: #5A1712' : '');
-      sub.textContent = textoConexao(c, 'banco consultado em ');
+      sub.textContent = textoConexao(c, 'dados do banco em ');
       sub.style.cssText = 'font-size: 12px; color: ' + (ruim ? '#5A1712' : '#4A4D55');
       const link = li.querySelector('sc-if');
       if (c.status === 'reconectar') link.replaceWith(...link.childNodes); else link.remove();
@@ -149,7 +166,9 @@ export function faixaOpenFinance(fontes, modelo, mob, acoes = {}) {
     const li = clone(i ? li2 : li1);
     const [nome, sub] = li.querySelectorAll('span');
     nome.textContent = c.banco + (c.status === 'reconectar' ? ' · precisa reconectar' : c.status === 'erro' ? ' · não respondeu' : '');
-    sub.textContent = textoConexao(c, 'banco consultado ');
+    sub.textContent = textoConexao(c, 'dados do banco em ');
+    nome.style.flex = '0 1 auto'; sub.style.flex = '0 1 auto';
+    nome.style.width = '100%'; sub.style.width = '100%';
     if (ruim) {
       li.style.cssText = 'display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; padding: 8px 10px; background: #FBE3E0; border: 1px solid #E3B4AE; border-radius: 8px; color: #5A1712' + (i ? '; margin-top: 6px' : '');
       sub.style.color = '#5A1712';
@@ -160,6 +179,7 @@ export function faixaOpenFinance(fontes, modelo, mob, acoes = {}) {
         li.append(a);
       }
     }
+    li.style.flexDirection = 'column'; li.style.alignItems = 'flex-start';
     return li;
   }));
   const botao = sec.querySelector('button');
