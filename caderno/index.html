@@ -4742,7 +4742,18 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")fecharMenuPerfil();}
       erroDaApi(r, corpo); mostrarFalhaDeCarga({ status: 403 }, emailConectado); throw new Error('sessão encerrada');
     }
     if (!r.ok) throw new Error(corpo.erro || ('HTTP ' + r.status));
-    if (idToken === t && perfil === p) await window.cadernoReler();
+    if (idToken !== t || perfil !== p) throw new Error('sessão encerrada');
+    const telaAtualizada = await window.cadernoReler();
+    if (idToken !== t || perfil !== p) throw new Error('sessão encerrada');
+    if (!telaAtualizada) throw new Error('A rotina respondeu, mas a tela não pôde ser relida.');
+    const versao = corpo.projecao?.estado === 'concluida' ? corpo.projecao.versao : null;
+    if (versao) {
+      await carregarExtrato(p, true);
+      if (idToken !== t || perfil !== p) throw new Error('sessão encerrada');
+      if (extrato.cache[p]?.estado !== 'ok' || extrato.cache[p]?.env?.versao !== versao) {
+        throw new Error('A rotina respondeu, mas a nova versão da projeção ainda não pôde ser carregada.');
+      }
+    }
     return corpo;
   };
 

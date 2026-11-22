@@ -81,11 +81,19 @@ async function reler() {
 // D-027: sincronizar com o Open Finance. Os números só mudam no fim (a ponte
 // relê a base depois do POST); o foco fica no botão.
 const sinc = { resposta: null, estado: 'repouso', demorando: false, erro: null };
+let analiseAtual;
 async function sincronizar() {
   if (sinc.estado === 'sincronizando' || !window.cadernoSincronizar) return;
   Object.assign(sinc, { estado: 'sincronizando', demorando: false, erro: null }); render(); focarSinc();
   const relogio = setTimeout(() => { if (sinc.estado === 'sincronizando') { sinc.demorando = true; render(); focarSinc(); } }, 60000);
-  try { sinc.resposta = await window.cadernoSincronizar(); sinc.estado = 'repouso'; }
+  try {
+    const resposta = await window.cadernoSincronizar();
+    if (resposta.projecao?.estado === 'concluida' && resposta.projecao.versao) {
+      analiseAtual = await window.cadernoExtratoEnvelope();
+    }
+    sinc.resposta = resposta;
+    sinc.estado = 'repouso';
+  }
   catch (e) { sinc.estado = 'erro'; sinc.erro = String(e?.message || 'sem conexão'); }
   finally { clearTimeout(relogio); render(); focarSinc(); }
 }
@@ -141,7 +149,7 @@ function construir(mob) {
     const h = window.cadernoHoje(); if (!h) return null;
     const agora = new Date();
     const saldos = lerSaldosInformados(h.saldosBrutos, h.perfil, h.contasLedger, agora);
-    const analise = analiseDoCaso(agora);
+    const analise = analiseAtual ?? analiseDoCaso(agora);
     let modelo = null; try { modelo = lerProjecao(analise, pessoaSessao); } catch { modelo = null; }
     window.__HOJE_PREVIEW__ = { saldos, sinais: null };
     // D-026: erro de leitura da análise é distinto de ausência e de formato inválido.

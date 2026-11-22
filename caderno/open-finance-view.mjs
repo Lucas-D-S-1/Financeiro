@@ -37,6 +37,7 @@ const ESTILO_RES_CEL = {
 // que casou com o histórico agora e o que já estava ligado de antes.
 export function resumoSincronizacao(r) {
   if(r.modo==='coleta' || r.financeiro_bloqueado) return {novo:false,texto:'Dados coletados. A conciliação financeira tem pendências para revisão e aprovação.'};
+  if (r.projecao?.estado === 'erro') return { novo: false, texto: 'A importação terminou. A projeção não pôde ser recalculada.' };
   const novos = Number(r.novos) || 0, ajust = Number(r.ajustados) || 0, saldos = Number(r.saldos) || 0;
   const ja = (Number(r.casados) || 0) + (Number(r.ja_lancados) || 0);
   const partesSaldo = saldos ? [plural(saldos, 'saldo atualizado', 'saldos atualizados')] : [];
@@ -106,10 +107,19 @@ export function faixaOpenFinance(fontes, modelo, mob, acoes = {}) {
   if (erroGeral) res = { tipo: 'erro', titulo: 'Não deu para sincronizar.', texto: 'O Open Finance respondeu: “' + (modelo.erro || 'sem conexão') + '”. Releia a base para conferir o resultado.' };
   else if (resultado && !sinc) {
     const h = hora(data(resultado.executado_em) || executado || agora), s = resumoSincronizacao(resultado);
-    const aviso = pendente(resultado) || conns.some(c => c.status !== 'ok' ||
+    const pendencias = resultado.modo === 'automatico' ? Number(resultado.linhas_pendentes) || 0 : 0;
+    const aviso = pendente(resultado) || pendencias > 0 || conns.some(c => c.status !== 'ok' ||
       ['proxy_cache', 'limite_frequencia', 'manual_indisponivel', 'em_curso', 'erro'].includes(c.atualizacao));
-    res = { tipo: aviso ? 'aviso' : 'ok', titulo: r ? 'Leitura local concluída às ' + h + '.' : 'Conciliação financeira pendente.',
-      texto: s.texto, link: s.novo };
+    const completa = resultado.coletado === true && (resultado.aplicado === true || resultado.modo === 'sem_alteracoes') &&
+      !pendente(resultado) &&
+      resultado.projecao?.estado === 'concluida' && Boolean(resultado.projecao.versao);
+    const falhaProjecao = resultado.projecao?.estado === 'erro';
+    const titulo = completa ? 'Atualização concluída às ' + h + '.'
+      : r ? 'Leitura local concluída às ' + h + '.' : 'Conciliação financeira pendente.';
+    res = { tipo: falhaProjecao && !pendente(resultado) ? 'erro' : aviso ? 'aviso' : 'ok', titulo,
+      texto: s.texto + (completa ? ' Projeção recalculada.' : '') +
+        (pendencias ? ' ' + plural(pendencias, 'pendência segue', 'pendências seguem') + ' em revisão.' : ''),
+      link: s.novo };
   }
 
   const textoConexao = (c, prefixo) => {
@@ -153,7 +163,9 @@ export function faixaOpenFinance(fontes, modelo, mob, acoes = {}) {
       caixa.replaceWith(...caixa.childNodes);
     } else caixa.remove();
     if (sinc) barra.replaceWith(...barra.childNodes); else barra.remove();
-    sec.querySelector('button').onclick = acoes.sincronizar;
+    const botao = sec.querySelector('button');
+    if (!sinc && !erroGeral) botao.textContent = 'Atualizar';
+    botao.onclick = acoes.sincronizar;
     return sec;
   }
 
@@ -201,6 +213,7 @@ export function faixaOpenFinance(fontes, modelo, mob, acoes = {}) {
     botao.textContent = 'Tentar de novo';
     botao.style.cssText = 'min-height: 44px; background: #16171A; color: #FFFFFF; border: 0; border-radius: 10px; font-size: 14px; font-weight: 600';
   }
+  if (!sinc && !erroGeral) botao.textContent = 'Atualizar';
   botao.onclick = acoes.sincronizar;
   for (const n of sec.children) n.style.flexShrink = '0';
   return sec;
