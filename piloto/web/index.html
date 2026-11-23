@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#f6f4ee">
+  <title>Piloto Open Finance</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      Agente de Gastos
+    </div>
+    <button type="button" id="logout" class="secondary" hidden>Sair</button>
+  </header>
+  <main>
+    <div class="heading">
+      <p class="eyebrow">Open Finance</p>
+      <h1>Piloto de conexões</h1>
+      <p>Consulte suas contas, movimentações e faturas em um espaço privado.</p>
+    </div>
+    <p id="message" class="message" role="status" aria-live="polite" hidden></p>
+    <section id="paused" class="panel" hidden>
+      <h2>Piloto em preparação</h2>
+      <p>O login ficará disponível pelo mesmo endereço quando a preparação terminar.</p>
+    </section>
+    <section id="login" class="panel" hidden>
+      <h2>Entre com seu convite</h2>
+      <form id="login-form">
+        <label for="email">E-mail cadastrado</label>
+        <div class="form-row">
+          <input type="email" name="email" id="email" autocomplete="email" required maxlength="254">
+          <button type="submit">Enviar link de acesso</button>
+        </div>
+      </form>
+      <p class="quiet">Abra o link no mesmo navegador. Se fechar a página, você pode voltar pelo link do Agente de Gastos.</p>
+    </section>
+    <section id="notice" class="panel" hidden>
+      <h2>Antes de conectar</h2>
+      <p>O piloto usa instituição, nome de exibição e tipo de conta, saldo, movimentações dos últimos 90 dias e faturas fornecidas para exibir seu painel privado. A Pluggy coleta os dados autorizados e o Supabase guarda o login e os dados do piloto.</p>
+      <p>As cópias ficam disponíveis por até 15 dias a partir do aceite. Você pode desconectar uma instituição ou encerrar o piloto a qualquer momento. A autorização no banco acontece em uma etapa separada no Pluggy Connect.</p>
+      <p>Privacidade e exclusão: <a id="contact"></a>.</p>
+      <button type="button" id="accept">Li e aceito participar</button>
+    </section>
+    <section id="provision" class="panel" hidden>
+      <h2>Prepare sua aplicação Pluggy</h2>
+      <p>Abra o Dashboard, crie a aplicação do piloto na sua conta e solicite acesso aos conectores Open Finance. Volte aqui quando Lucas confirmar a configuração do ambiente.</p>
+      <p>Se for preciso configurar o ambiente, use o cofre de segredos do piloto. Senhas do banco são usadas somente no Pluggy Connect.</p>
+      <a class="button" href="https://dashboard.pluggy.ai/" target="_blank" rel="noopener noreferrer">Abrir Dashboard da Pluggy</a>
+      <button type="button" class="secondary" id="check-setup">Já voltei</button>
+      <button type="button" class="secondary" id="provision-revoke">Encerrar piloto</button>
+    </section>
+    <section id="dashboard" class="panel" hidden>
+      <div class="panel-top">
+        <div>
+          <h2>Suas conexões</h2>
+          <p id="environment" class="quiet"></p>
+        </div>
+        <button type="button" id="connect" hidden>Conectar instituição</button>
+      </div>
+      <p id="empty" class="quiet" hidden>Nenhuma instituição conectada.</p>
+      <div id="items"></div>
+      <button type="button" id="revoke" class="secondary muted" hidden>Encerrar piloto e apagar dados</button>
+    </section>
+  </main>
+</body>
+</html>
