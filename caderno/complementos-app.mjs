@@ -38,6 +38,7 @@ function render(){
   const preservarTitulo=!caso&&host.activeElement?.matches('h1,[role=heading]');
   const manterDestino=host.activeElement?.dataset?.destino||null;
   const focarDetalheInicial=caso==='D013'&&(!aplicado||host.activeElement?.tagName==='H2');
+  if(!aplicado && !caso) window.cadernoAbrirMes?.(consulta.get('mes'));
   if(!aplicado){aplicado=true;if(!caso&&maisAberto)history.replaceState({cadernoNav:'mais'},'');const cat=consulta.get('categoria');if(caso==='D013'){history.replaceState({caderno:'lista'},'');if(pessoa==='Lucas'||consulta.get('abrir')==='acerto'){selecao='Acerto do casal';retorno='Acerto do casal';history.pushState({caderno:'acerto'},'');}}if(cat&&window.cadernoCaixaAtual()?.ordenadas.some(([c])=>c===cat))selecao=cat;const k=consulta.get('dia');if(k&&/^\d{4}-\d{2}-\d{2}$/.test(k)){const model=lerProjecao(casoCobertura,pessoa),i=model.meses.findIndex(m=>m.key===k.slice(0,7));if(i>=0&&new Date(k+'T12:00:00Z').toISOString().slice(0,10)===k){dia=k;indice=i;}}}
   const mob=innerWidth<1200;const exemplo=caso==='D003'?casosOperacao[new URLSearchParams(location.search).get('caso')]:null;
   const style=document.createElement('style');style.textContent="button,select,nav a{font:inherit;color:inherit}button:focus-visible,[role=button]:focus-visible,select:focus-visible{outline:2px solid #16171A;outline-offset:2px}.mais-voltar:focus-visible{outline:3px solid #2451B8;outline-offset:-2px}";
