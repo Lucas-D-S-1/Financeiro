@@ -1872,6 +1872,9 @@ const compromissoNoPainel=c=>euAdianto(c)?c.valor:c.valor*meuRateioAtual();
 const compromissoMeu=c=>c.casal&&SPLIT_LUCAS?c.valor*meuRateioAtual():c.valor;
 
 const centavos=v=>Math.round((v+Number.EPSILON)*100)/100;
+const rateioParaDetalhe=(base,meu,fracao)=>({
+  meu:centavos(meu),outro:centavos(base-meu),percentual:fracao*100,
+});
 const mesDaChave=k=>mesStr((k-1)%12+1,Math.floor((k-1)/12));
 function linhasDoPerfil(quem){
   return quem===perfil?getDisplayData():comPerfilParaCalculo(quem,getDisplayData);
@@ -1952,14 +1955,20 @@ function compromissosNoCaixa(m,y){
     }else if(observado.length)eventos=[];
     return eventos.filter(e=>e.valor>0).flatMap(e=>{
       const pct=meuRateioAtual(),key="compromisso|"+c.quemPaga+"|"+c.desc+"|"+e.data;
-      const gasto={...base,data:e.data,desc:euAdianto(c)?c.desc:`A pagar · ${c.desc} (${Math.round(pct*100)}%)`,
-        cat:euAdianto(c)?c.cat:CAT_ACERTO,valor:centavos(euAdianto(c)?e.valor:e.valor*pct),
-        tipo:euAdianto(c)?c.tipo||"Fixo":"Casa",origem:c.origem==="media_movel"?"media_movel_residual":"previsao_de_compromisso",
-        previsaoChave:key};
+      const adianto=euAdianto(c);
+      const valor=centavos(adianto?e.valor:e.valor*pct);
       const pctOutro=SPLIT_LUCAS?(perfil==="Lucas"?1-SPLIT_LUCAS:SPLIT_LUCAS):0;
-      return c.casal&&euAdianto(c)&&pctOutro?[gasto,{...gasto,
+      const receber=c.casal&&adianto&&pctOutro;
+      const parteOutro=centavos(e.valor*pctOutro);
+      const rateioMensal=receber?rateioParaDetalhe(valor,valor-parteOutro,pct)
+        :c.casal&&!adianto&&pct>0?rateioParaDetalhe(e.valor,valor,pct):null;
+      const gasto={...base,data:e.data,desc:adianto?c.desc:`A pagar · ${c.desc} (${Math.round(pct*100)}%)`,
+        cat:adianto?c.cat:CAT_ACERTO,valor,
+        tipo:adianto?c.tipo||"Fixo":"Casa",origem:c.origem==="media_movel"?"media_movel_residual":"previsao_de_compromisso",
+        previsaoChave:key,rateioMensal};
+      return receber?[gasto,{...gasto,
         desc:`A receber · ${c.desc} (${Math.round(pctOutro*100)}%)`,
-        cat:CAT_ACERTO,valor:centavos(e.valor*pctOutro),tipo:"Reembolso",previsaoChave:key+"|receber"}]:[gasto];
+        cat:CAT_ACERTO,valor:parteOutro,tipo:"Reembolso",previsaoChave:key+"|receber"}]:[gasto];
     });
   });
 }
@@ -1976,10 +1985,12 @@ function dadosProjetados(m,y){
   const outro=outroPerfil();
   const pagar=parcelasNoCaixa(m,y,outro).flatMap(r=>{
     const pct=pctDoOutroNaParcela(r,outro);
+    const valor=centavos(r.valor*pct);
     return pct?[{...r,id:"pagar-proj-"+r.id,
       desc:`A pagar · ${r.rotulo||r.desc} (${Math.round(pct*100)}%)`,
-      cat:CAT_ACERTO,valor:centavos(r.valor*pct),tipo:"Casa",produto:"sintetico",
-      cartao:"projetado",previsaoChave:r.previsaoChave+"|pagar"}]:[];
+      cat:CAT_ACERTO,valor,tipo:"Casa",produto:"sintetico",
+      cartao:"projetado",previsaoChave:r.previsaoChave+"|pagar",
+      rateioMensal:rateioParaDetalhe(r.valor,valor,pct)}]:[];
   });
   return [...compromissosNoCaixa(m,y),...parcelas,...receber,...pagar];
 }
@@ -4678,6 +4689,52 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")fecharMenuPerfil();}
       rotulos: Object.fromEntries(s.ordenadas.map(([cat]) => [cat, rotuloCat(cat)])),
       detalhes: Object.fromEntries(s.ordenadas.map(([cat]) => [cat, lancamentosDaCategoria(s.txs, cat)
         .map(({ r, sinal }) => ({ r: { ...r, nome: nomeNoDetalhe(r, cat) }, sinal }))])) };
+  };
+  // O mês inteiro, independente do recorte e do modo escolhidos em Categorias.
+  window.cadernoMensal = chave => {
+    if (!escopoAtivo() || !/^\d{4}-(0[1-9]|1[0-2])$/.test(chave)) return null;
+    const [y,m] = chave.split('-').map(Number);
+    if (y < 2000 || y > 2100) return null;
+    const outro = outroPerfil();
+    const proprias = linhasDoPerfil(perfil);
+    const linhas = dadosMes(m,y);
+    const casal = respostaCaderno.casal;
+    const linhasOutro = casal ? dadosMesDoPerfil(outro,m,y) : [];
+    const acerto = casal ? resumoAcertoDoMes(m,y,
+      perfil === 'Lucas' ? linhas : linhasOutro,
+      perfil === 'Lucas' ? linhasOutro : linhas) : null;
+    const alvo = chaveMes(m,y);
+    const creditoCartao = r => r.cat === CAT_ACERTO && r.tipo === 'Reembolso' &&
+      /^A receber · .+ \(\d+(?:[.,]\d+)?%\) · \d+\/\d+ · cartão /i.test(r.desc);
+    const preparar = r => {
+      const parcela = r.parcTotal > 1 && r.parcAtual >= 1 && r.parcAtual <= r.parcTotal;
+      const chave = parcela ? chaveParcela(r) : null;
+      const anterior = r.projetado && chave && r.cat !== CAT_ACERTO
+        ? proprias.find(x => x.id === r.id)
+        : null;
+      const pctOutro = parcela && r.cat !== CAT_ACERTO ? pctDoOutroNaParcela(r) : 0;
+      const rateioMensal = r.rateioMensal ?? (pctOutro > 0
+        ? rateioParaDetalhe(r.valor,r.valor-centavos(r.valor*pctOutro),1-pctOutro) : null);
+      return {...r, rotuloCat: rotuloCat(r.cat), chave, rateioMensal,
+        dataCompra: anterior?.data || (!r.projetado ? r.data : null),
+        lojaMensal: lojaNormalizadaParcela(r.descOriginal || r.desc)};
+    };
+    const historico = proprias.filter(r => r.tipo !== 'Reembolso' && r.cat !== CAT_ACERTO);
+    return {perfil, outro, linhas: linhas.map(preparar),
+      historico: historico.filter(r => ordemMes(mesDe(r)) >= alvo-3 && ordemMes(mesDe(r)) < alvo)
+        .map(r => ({mes:mesDe(r), loja:lojaNormalizadaParcela(r.descOriginal || r.desc)})),
+      parcelas: historico.filter(r => r.parcTotal > 1 && r.parcAtual >= 1 && ordemMes(mesDe(r)) > alvo)
+        .map(r => ({chave:chaveParcela(r), mes:mesDe(r), parcela:r.parcAtual, valor:r.valor})),
+      regras: regrasProjecao.filter(r => r.person === perfil && r.padrao).map(r => r.padrao),
+      acerto,
+      creditosCartao: (casal ? linhasDoPerfil(outro).filter(creditoCartao) : [])
+        .map(r => ({id:r.id, desc:r.desc, mes:mesDe(r), valor:r.valor})),
+      parcial: mesEhParcial(perfil,mesStr(m,y))};
+  };
+  window.cadernoAbrirMes = chave => {
+    if (!escopoAtivo() || !/^\d{4}-(0[1-9]|1[0-2])$/.test(chave)) return;
+    const [y,m] = chave.split('-').map(Number);
+    if (y >= 2000 && y <= 2100) mesAtual = {m,y};
   };
   window.cadernoOperacao = () => {
     if (!escopoAtivo()) return null;
