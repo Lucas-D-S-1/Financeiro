@@ -87,12 +87,6 @@ export function categoriasCaixaView(fontes,s,mob,selecao,acoes) {
     for(const msg of mensagens.filter(t=>!t.startsWith('Cobertura parcial.')&&!t.startsWith('Inclui previsões.'))){const states=parse(fontes.D002_Estados);const section=[...states.querySelectorAll('section')].find(n=>n.firstElementChild.textContent.includes(msg.startsWith('Só o cartão')?'Recorte por cartão':'Reembolso esperado'));const alert=clone(section.querySelector('div'));text(alert,msg);root.children[1].insertBefore(alert,root.children[1].querySelector('[data-categoria]'));}
   }
   if(!categorias.length){const states=parse(fontes.D002_Estados);const sec=[...states.querySelectorAll('section')].find(n=>n.firstElementChild.textContent.includes('Mês sem lançamentos'));const vazio=clone(sec.querySelector('div'));vazio.lastElementChild.remove();text(vazio.firstElementChild,'Nenhuma transação em '+mes+' de '+s.mes.y);const target=mob?root.children[1]:root.querySelector('section[aria-label="Gastos por categoria"]');if(mob)target.append(vazio);else target.replaceChildren(vazio);}
-  const mensal = document.createElement('a');
-  mensal.href = './mensal.html?mes=' + s.mes.y + '-' + String(s.mes.m).padStart(2,'0');
-  mensal.textContent = 'Visão mensal';
-  mensal.style.cssText = 'display:inline-flex;align-self:flex-start;align-items:center;min-height:38px;padding:0 14px;border:1px solid #DDDAD2;border-radius:8px;background:white;color:#16171A;font-size:14px';
-  const corpo = mob ? root.children[1] : root.querySelector('main');
-  if(mob) corpo.prepend(mensal); else corpo.children[0].after(mensal);
   if(s.perfil==='Julia'){for(const n of root.querySelectorAll('*')){if(n.style.backgroundColor==='rgb(200, 240, 74)'){n.style.backgroundColor=n.closest('nav')&&mob?'#2FB79B':'#8EE6D3';if(n.closest('nav')&&mob)n.style.boxShadow='none';}}const conta=root.querySelector('header button[aria-haspopup]')||(mob?root.querySelector('header')?.lastElementChild:null);if(conta){const ref=parse(fontes.D016_Julia_Celular).querySelector('header button');conta.replaceWith(clone(ref));}}
   return root;
 }

@@ -13,7 +13,7 @@ import fontes from './fontes-complementos.mjs';
 
 const parse = s => new DOMParser().parseFromString(s, 'text/html').querySelector('x-dc > div');
 const clone = n => document.importNode(n, true);
-const MODULOS = ['hoje', 'extrato', 'caixa', 'calendario', 'projecao', 'investimentos', 'mensal'];
+const MODULOS = ['hoje', 'extrato', 'caixa', 'calendario', 'projecao', 'investimentos'];
 const IDENTIDADE = { Lucas: 'background: #C8F04A; box-shadow: 0 0 0 1px #8FB31C', Julia: 'background: #2FB79B' };
 
 const hostEntrada = document.createElement('div');

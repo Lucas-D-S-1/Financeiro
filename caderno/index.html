@@ -4679,50 +4679,6 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")fecharMenuPerfil();}
       detalhes: Object.fromEntries(s.ordenadas.map(([cat]) => [cat, lancamentosDaCategoria(s.txs, cat)
         .map(({ r, sinal }) => ({ r: { ...r, nome: nomeNoDetalhe(r, cat) }, sinal }))])) };
   };
-  // O mês inteiro, independente do recorte e do modo escolhidos em Categorias.
-  window.cadernoMensal = chave => {
-    if (!escopoAtivo() || !/^\d{4}-(0[1-9]|1[0-2])$/.test(chave)) return null;
-    const [y,m] = chave.split('-').map(Number);
-    if (y < 2000 || y > 2100) return null;
-    const outro = outroPerfil();
-    const proprias = linhasDoPerfil(perfil);
-    const linhas = dadosMes(m,y);
-    const casal = respostaCaderno.casal;
-    const linhasOutro = casal ? dadosMesDoPerfil(outro,m,y) : [];
-    const acerto = casal ? resumoAcertoDoMes(m,y,
-      perfil === 'Lucas' ? linhas : linhasOutro,
-      perfil === 'Lucas' ? linhasOutro : linhas) : null;
-    const alvo = chaveMes(m,y);
-    const creditoCartao = r => r.cat === CAT_ACERTO && r.tipo === 'Reembolso' &&
-      /^A receber · .+ \(\d+%\) · \d+\/\d+ · cartão /i.test(r.desc);
-    const preparar = r => {
-      const parcela = r.parcTotal > 1 && r.parcAtual >= 1 && r.parcAtual <= r.parcTotal;
-      const chave = parcela ? chaveParcela(r) : null;
-      const anterior = r.projetado && chave && r.cat !== CAT_ACERTO
-        ? proprias.find(x => x.id === r.id)
-        : null;
-      return {...r, rotuloCat: rotuloCat(r.cat), chave,
-        dataCompra: anterior?.data || (!r.projetado ? r.data : null),
-        lojaMensal: lojaNormalizadaParcela(r.descOriginal || r.desc),
-        rateioOutro: parcela && r.cat !== CAT_ACERTO ? pctDoOutroNaParcela(r) : 0};
-    };
-    const historico = proprias.filter(r => r.tipo !== 'Reembolso' && r.cat !== CAT_ACERTO);
-    return {perfil, outro, linhas: linhas.map(preparar),
-      historico: historico.filter(r => ordemMes(mesDe(r)) >= alvo-3 && ordemMes(mesDe(r)) < alvo)
-        .map(r => ({mes:mesDe(r), loja:lojaNormalizadaParcela(r.descOriginal || r.desc)})),
-      parcelas: historico.filter(r => r.parcTotal > 1 && r.parcAtual >= 1 && ordemMes(mesDe(r)) > alvo)
-        .map(r => ({chave:chaveParcela(r), mes:mesDe(r), parcela:r.parcAtual, valor:r.valor})),
-      regras: regrasProjecao.filter(r => r.person === perfil && r.padrao).map(r => r.padrao),
-      acerto,
-      creditosCartao: (casal ? linhasDoPerfil(outro).filter(creditoCartao) : [])
-        .map(r => ({id:r.id, desc:r.desc, mes:mesDe(r), valor:r.valor})),
-      parcial: mesEhParcial(perfil,mesStr(m,y))};
-  };
-  window.cadernoAbrirMes = chave => {
-    if (!escopoAtivo() || !/^\d{4}-(0[1-9]|1[0-2])$/.test(chave)) return;
-    const [y,m] = chave.split('-').map(Number);
-    if (y >= 2000 && y <= 2100) mesAtual = {m,y};
-  };
   window.cadernoOperacao = () => {
     if (!escopoAtivo()) return null;
     return { escopo: 'pessoa', perfil, transacoes: allData.map(r => ({ ...r, person: perfil })),
