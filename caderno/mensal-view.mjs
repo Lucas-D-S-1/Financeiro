@@ -199,7 +199,8 @@ function detalhe(item) {
     <span class="m">${escapar(curto(r.mes) + '/' + r.mes.slice(2, 4))}</span><span>${r.numero} de ${item.parcelas}${i === 0 ? ' · esta' : ''}</span>
     ${money(r.valor)}${r.estimado ? '<small class="agenda-prev">estimativa</small>' : ''}</li>`).join('')}</ol></div>` : '';
   const rateio = item.rateio;
-  const rotuloRateio = rateio && `${rateio.percentual}% ${escapar(modelo.perfil)}`;
+  const percentual = rateio?.percentual.toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+  const rotuloRateio = rateio && `${percentual}% ${escapar(modelo.perfil)}`;
   const parteOutro = rateio ? (rateio.estimado ? '≈ ' : '') + moeda(rateio.outro) : '';
   const totalParte = item.parcelas > 1 && item.totalParte !== null && item.totalParte !== undefined
     ? ' · sua parte total ' + moeda(item.totalParte) : '';

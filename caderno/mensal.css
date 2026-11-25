@@ -136,7 +136,7 @@ dialog::backdrop{background:#16171a52}
 @keyframes entra{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.painel{animation:none}}
 .d-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
-.fechar{width:40px;height:40px;display:grid;place-items:center;border:1px solid #c9c6bd;background:#fff;border-radius:10px}
+.fechar{flex:none;width:40px;height:40px;display:grid;place-items:center;border:1px solid #c9c6bd;background:#fff;border-radius:10px}
 .d-nome{display:grid;gap:8px}
 .d-nome h2{font-size:26px;line-height:1.15;letter-spacing:-.025em;font-weight:600}
 .d-nome .tags{justify-content:flex-start}
@@ -204,6 +204,7 @@ dialog::backdrop{background:#16171a52}
   .painel{width:100%;height:auto;max-height:88dvh;border-left:0;border-radius:18px 18px 0 0;padding:10px 18px 24px;box-shadow:0 -12px 32px #16171a24;animation-name:sobe;overscroll-behavior:contain}
   .painel::before{content:"";justify-self:center;width:40px;height:4px;border-radius:2px;background:#d3d0c7}
   .painel{gap:14px}
+  .d-head{position:sticky;top:0;z-index:1;background:#fff;padding-block:4px}
   .bloco{padding-top:12px;gap:8px}
   .agenda li{padding:5px 0}
   .ficha div{padding:7px 0}
