@@ -5,7 +5,7 @@ export const GRUPOS = [
 ];
 
 const ACERTO = 'Acerto do casal';
-const REGISTRO_CARTAO = /^A (?:receber|pagar) · (.+) \((\d+(?:[.,]\d+)?)%\) · (\d+)\/(\d+) · cartão (.+)$/i;
+const REGISTRO_CARTAO = /^A (?:receber|pagar) · (.+) \((\d+)%\) · (\d+)\/(\d+) · cartão (.+)$/i;
 const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 export const moeda = cent => BRL.format(cent / 100).replace(/^-/, '−');
 const soma = (linhas, campo) => linhas.reduce((s, r) => s + r[campo], 0);
@@ -30,7 +30,7 @@ function lerCreditoCartao(r) {
   const partes = r.desc.match(REGISTRO_CARTAO);
   if (!partes) return null;
   const [, nome, p, n, total, titular] = partes;
-  const percentual = Number(p.replace(',', '.')), atual = Number(n), parcelas = Number(total);
+  const percentual = Number(p), atual = Number(n), parcelas = Number(total);
   if (percentual <= 0 || percentual > 100 || !numeroParcelaValido(atual, parcelas)) return null;
   return { ...r, nome, titular, percentual, atual, parcelas, valor: centavos(r.valor),
     chave: [titular, nome, percentual, parcelas, deslocarMes(chaveCaixa(r.mes), 1 - atual)].join('|') };
@@ -82,11 +82,15 @@ function itemDoCaderno(r, i, dados, recorrentes, chaveMes) {
     : r.produto === 'cartao' ? 'Cartão ' + r.cartao
     : r.cartao && !['—', 'projetado'].includes(r.cartao) ? 'Conta ' + r.cartao
     : r.projetado ? 'Previsão' : null;
-  const rateio = r.rateioMensal && {
-    meu: centavos(r.rateioMensal.meu),
-    outro: centavos(r.rateioMensal.outro),
-    percentual: r.rateioMensal.percentual,
-  };
+  const percentual = pagar ? Number(desc.match(/\((\d+)%\)$/)?.[1]) || 0 : 0;
+  let rateio = null;
+  if (percentual > 0 && percentual <= 100) {
+    rateio = { meu: valor, outro: Math.round(valor * (100 - percentual) / percentual),
+      percentual, estimado: percentual < 100 };
+  } else if (r.rateioOutro > 0) {
+    const outro = Math.round(valor * r.rateioOutro);
+    rateio = { meu: valor - outro, outro, percentual: Math.round(100 * (1 - r.rateioOutro)), estimado: false };
+  }
   const nome = pagar ? desc.replace(/\s*\(\d+%\)$/, '') : rotulo;
   return { id: 'linha:' + i, grupo, nome: parcela ? removerParcela(nome) : nome,
     categoria: r.rotuloCat, valor, forma, atual, parcelas, data: r.dataCompra,
